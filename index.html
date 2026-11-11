@@ -34,6 +34,7 @@
   <button data-tab="entrada">Entrada</button>
   <button data-tab="saida">Entrega</button>
   <button data-tab="estoque">Estoque</button>
+  <button data-tab="grupos">Análise por grupos</button>
   <button data-tab="historico">Histórico</button>
   <button data-tab="funcionarios">Funcionários</button>
   <button data-tab="cadastros">Produtos</button>
@@ -44,6 +45,7 @@
 <main>
 <section id="tab-dashboard" class="tab-page">
   <div class="section-head"><div><span class="eyebrow">GESTÃO • INDICADORES</span><h1>Painel gerencial</h1><p id="lastUpdate">Carregando dados...</p></div><button id="refresh" class="btn outline">↻ Atualizar dados</button></div>
+  <div class="panel dashboard-filter"><label for="dashboardItemFilter">Analisar indicadores por item</label><select id="dashboardItemFilter"><option value="">Todos os itens</option></select><small>Selecione um material para recalcular os indicadores e gráficos. A opção “Todos os itens” apresenta a visão consolidada.</small></div>
   <div class="kpis" id="kpis"></div>
   <div class="dashboard-grid">
     <div class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">MOVIMENTAÇÃO</span><h2>Entradas x saídas</h2></div><span class="period-tag">Últimos 30 dias</span></div><div id="movementChart" class="chart-area"></div></div>
@@ -51,6 +53,7 @@
     <div class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">CONFORMIDADE</span><h2>Situação dos CAs</h2></div></div><div id="caChart" class="chart-area"></div></div>
     <div class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">CONSUMO</span><h2>Itens com maior saída</h2></div><span class="period-tag">Últimos 90 dias</span></div><div id="consumptionChart" class="chart-area"></div></div>
   </div>
+  <div class="panel chart-panel"><div class="panel-heading"><div><span class="eyebrow">FINANCEIRO</span><h2>Custo mensal de entradas e saídas</h2></div></div><div id="costChart" class="chart-area"></div></div>
   <div class="panel"><div class="panel-heading"><div><span class="eyebrow">AÇÃO RECOMENDADA</span><h2>Prioridades de reposição</h2></div></div><div id="alerts" class="table-wrap">Carregando...</div></div>
 </section>
 <section id="tab-entrada" class="tab-page hidden">
@@ -75,6 +78,11 @@
   </form></div>
 </section>
 <section id="tab-estoque" class="tab-page hidden"><div class="panel"><div class="section-head"><div><span class="eyebrow">CONSULTA</span><h1>Posição de estoque</h1></div><input id="stockSearch" class="search" placeholder="Buscar produto, CA ou tamanho"></div><div id="stockTable" class="table-wrap"></div></div></section>
+<section id="tab-grupos" class="tab-page hidden">
+  <div class="page-intro"><span class="eyebrow">ANÁLISE DE MATERIAIS</span><h1>Análise por grupos de itens</h1><p>Consulte o saldo de cada material agrupado por grupo. No cadastro do EPI, informe o grupo (ex.: Bota, Luva, Capacete) e o subgrupo ou tamanho (ex.: PVC 41, Nitrílica G).</p></div>
+  <div class="panel group-toolbar"><label for="groupFilter">Filtrar grupo</label><select id="groupFilter"><option value="">Todos os grupos</option></select><input id="groupSearch" class="search" placeholder="Buscar material ou tamanho"></div>
+  <div id="groupAnalysis"></div>
+</section>
 <section id="tab-historico" class="tab-page hidden"><div class="panel"><div class="section-head"><div><span class="eyebrow">RASTREABILIDADE</span><h1>Histórico de movimentações</h1></div><input id="historySearch" class="search" placeholder="Buscar produto, matrícula ou funcionário"></div><div id="historyTable" class="table-wrap"></div></div></section>
 <section id="tab-funcionarios" class="tab-page hidden">
   <div class="page-intro"><span class="eyebrow">BASE DE PESSOAS</span><h1>Funcionários</h1><p>Cadastro centralizado para identificação nas entregas de EPI. ADMIN e TST podem incluir e atualizar registros.</p></div>
@@ -87,7 +95,7 @@
 <section id="tab-cadastros" class="tab-page hidden">
   <div class="page-intro"><span class="eyebrow">CADASTRO MESTRE</span><h1>Produtos e materiais</h1><p>Cadastre as informações completas uma única vez. Elas serão reutilizadas nos lançamentos.</p></div>
   <div class="panel"><form id="productForm" class="form-grid">
-    <label>SKU / código<input id="pSku" required maxlength="40"></label><label>Descrição<input id="pName" required maxlength="120"></label><label>Tamanho / variante<input id="pVariant" maxlength="40" placeholder="Único, M, G, 42..."></label><label>Unidade<select id="pUnit"><option>UN</option><option>PAR</option><option>CAIXA</option><option>PACOTE</option></select></label><label>Categoria<input id="pCategory" maxlength="60"></label><label>Fabricante<input id="pMaker" maxlength="100"></label><label>Número do CA<input id="pCa" maxlength="30"></label><label>Validade do CA<input id="pCaExpiry" type="date"></label><label>Situação do CA<select id="pCaStatus"><option value="NAO CONSULTADO">Não consultado</option><option value="VALIDO">Válido</option><option value="SUSPENSO">Suspenso</option><option value="CANCELADO">Cancelado</option></select></label><label>Estoque mínimo<input id="pMin" type="number" min="0" step="1" value="0"></label><label>Estoque de segurança (quantidade)<input id="pSafety" type="number" min="0" step="1" value="0"></label><label>Múltiplo de compra<input id="pPack" type="number" min="1" step="1" value="1"><small>Quantidade mínima em que o fornecedor comercializa o item. Use 1 se não houver exigência.</small></label><label id="priceField">Preço unitário<input id="pPrice" type="number" min="0" step="0.01"></label><button class="btn primary wide" type="submit">Cadastrar produto</button>
+    <label>EPI<input id="pName" required maxlength="120" placeholder="Ex.: Bota PVC, Luva nitrílica"></label><label>Grupo<input id="pCategory" required maxlength="60" placeholder="Ex.: Bota, Luva, Capacete"></label><label>Subgrupo / tamanho<input id="pVariant" maxlength="80" placeholder="Ex.: PVC 41, Biqueira 45, Nitrílica G"></label><label>Unidade<select id="pUnit"><option>UN</option><option>PAR</option><option>CAIXA</option><option>PACOTE</option></select></label><label>Número do CA<input id="pCa" maxlength="30"></label><label>Validade do CA<input id="pCaExpiry" type="date"></label><label>Situação do CA<select id="pCaStatus"><option value="NAO CONSULTADO">Não consultado</option><option value="VALIDO">Válido</option><option value="SUSPENSO">Suspenso</option><option value="CANCELADO">Cancelado</option></select></label><label>Estoque mínimo<input id="pMin" type="number" min="0" step="1" value="0"></label><label>Estoque de segurança (quantidade)<input id="pSafety" type="number" min="0" step="1" value="0"></label><label id="priceField">Preço unitário<input id="pPrice" type="number" min="0" step="0.01"></label><button class="btn primary wide" type="submit">Cadastrar produto</button>
   </form></div>
   <div class="panel info-panel"><h2>Consulta de Certificado de Aprovação</h2><p>O sistema mantém o controle manual do CA. Consulte o número no portal oficial do Ministério do Trabalho e registre a situação e a validade no cadastro do produto.</p><a href="https://caepi.trabalho.gov.br/internet/ConsultaCAInternet.aspx" target="_blank" rel="noopener">Consultar CA no portal oficial do MTE ↗</a></div>
 </section>
@@ -95,7 +103,7 @@
 <section id="tab-tsts" class="tab-page hidden admin-only"><div class="page-intro"><span class="eyebrow">ADMINISTRAÇÃO DE ACESSOS</span><h1>Gestão de TSTs</h1><p>Crie e mantenha os acessos dos técnicos de segurança do trabalho.</p></div><div class="panel"><form id="tstForm" class="form-grid"><label>Matrícula<input id="tstMatricula" maxlength="40" required></label><label>Nome completo<input id="tstNome" maxlength="120" required></label><label>Senha inicial / nova senha<input id="tstSenha" type="password" minlength="6" autocomplete="new-password"><small>Obrigatória no cadastro; opcional na edição.</small></label><label class="check-label"><input id="tstAtivo" type="checkbox" checked> Usuário ativo</label><div class="wide form-actions"><button class="btn primary" type="submit">Salvar TST</button><button class="btn outline" id="tstClear" type="button">Limpar</button></div></form></div><div class="panel"><h2>Usuários TST cadastrados</h2><div id="tstTable" class="table-wrap"></div></div></section>
 <section id="tab-senha" class="tab-page hidden"><div class="page-intro"><span class="eyebrow">SEGURANÇA DA CONTA</span><h1>Minha senha</h1><p>Altere sua senha de acesso. A senha atual será solicitada para confirmar a operação.</p></div><div class="panel form-panel"><form id="passwordForm" class="form-grid"><label class="wide">Senha atual<input id="currentPassword" type="password" autocomplete="current-password" required></label><label>Nova senha<input id="newPassword" type="password" minlength="6" autocomplete="new-password" required><small>Mínimo de 6 caracteres.</small></label><label>Confirmar nova senha<input id="confirmPassword" type="password" minlength="6" autocomplete="new-password" required></label><button class="btn primary wide" type="submit">Atualizar minha senha</button></form></div></section>
 </main>
-<footer>Powered by Grupo GPS <span>•</span> Versão 1.1.6</footer>
+<footer>Powered by Grupo GPS <span>•</span> Versão 1.1.7</footer>
 </div>
 <script src="config.js"></script><script src="app.js"></script>
 </body></html>

@@ -2,7 +2,7 @@
 "use strict";
 const $ = id => document.getElementById(id);
 const state = {token:null,user:null,products:[],stock:[],employees:[],moves:[],tstUsers:[],dashboard:null};
-const APP_VERSION="1.1.6";
+const APP_VERSION="1.1.7";
 const apiUrl = () => window.APP_CONFIG?.API_URL || "";
 function toast(msg){const el=$("toast");el.textContent=msg;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),3600)}
 function busy(on){$("loading").classList.toggle("hidden",!on)}
@@ -27,32 +27,60 @@ function showApp(){
 }
 function showLogin(){$("app").classList.add("hidden");$("login").classList.remove("hidden")}
 function money(n){return Number(n||0).toLocaleString("pt-BR",{maximumFractionDigits:0})}
+function brl(n){return Number(n||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
 function date(v){return v?new Date(v).toLocaleDateString("pt-BR"):"—"}
 async function loadAll(){
   busy(true);
   try {const d=await api("bootstrap");state.products=d.products||[];state.stock=d.stock||[];state.employees=d.employees||[];state.moves=d.moves||[];state.tstUsers=d.tstUsers||[];state.dashboard=d.dashboard||{};renderAll();renderTstUsers();}
   finally {busy(false)}
 }
-function renderAll(){renderSelects();renderDashboard();renderStock();renderHistory();renderCollaborators();$("lastUpdate").textContent="Atualizado em "+new Date().toLocaleString("pt-BR")}
-function productLabel(p){return `${p.sku} • ${p.descricao}${p.variante?" / "+p.variante:""}`}
+function renderAll(){renderSelects();renderDashboard();renderStock();renderGroupAnalysis();renderHistory();renderCollaborators();$("lastUpdate").textContent="Atualizado em "+new Date().toLocaleString("pt-BR")}
+function productLabel(p){return `${p.categoria||"Sem grupo"} • ${p.descricao}${p.variante?" / "+p.variante:""}`}
 function renderSelects(){
   ["entryProduct","exitProduct","adjustProduct"].forEach(id=>{const s=$(id);if(!s)return;s.innerHTML='<option value="">Selecione...</option>';state.products.filter(p=>p.ativo).forEach(p=>{const o=document.createElement("option");o.value=p.sku;o.textContent=productLabel(p);s.appendChild(o)})});
   $("employeeOptions").innerHTML=state.employees.filter(e=>e.ativo).map(e=>`<option value="${escapeHtml(e.matricula)}">${escapeHtml(e.nome)}</option>`).join("");
+  const itemFilter=$("dashboardItemFilter"),currentItem=itemFilter.value;
+  itemFilter.innerHTML='<option value="">Todos os itens</option>'+state.stock.map(x=>`<option value="${escapeHtml(x.sku)}">${escapeHtml(x.label)}</option>`).join("");
+  itemFilter.value=currentItem;
+  const groupFilter=$("groupFilter"),currentGroup=groupFilter.value;
+  const groups=[...new Set(state.stock.map(x=>x.categoria||"Sem grupo"))].sort((a,b)=>a.localeCompare(b,"pt-BR"));
+  groupFilter.innerHTML='<option value="">Todos os grupos</option>'+groups.map(g=>`<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join("");groupFilter.value=currentGroup;
 }
 function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
 function kpi(label,value,detail,icon){return `<div class="kpi"><div class="kpi-top"><span class="kpi-icon">${icon}</span><span class="kpi-label">${label}</span></div><strong>${money(value)}</strong><small>${detail||""}</small></div>`}
-function barChart(elId,items){const el=$(elId);if(!items.length){el.innerHTML='<div class="empty">Sem dados suficientes para o gráfico.</div>';return;}const max=Math.max(1,...items.map(x=>Number(x.value)||0));el.innerHTML=items.map(x=>`<div class="bar-row"><div class="bar-label"><span>${escapeHtml(x.label)}</span><b>${money(x.value)}</b></div><div class="bar-track"><div class="bar-fill ${x.className||""}" style="width:${Math.max(x.value>0?2:0,(Number(x.value)||0)/max*100)}%"></div></div></div>`).join("")}
+function barChart(elId,items,currency=false){const el=$(elId);if(!items.length){el.innerHTML='<div class="empty">Sem dados suficientes para o gráfico.</div>';return;}const max=Math.max(1,...items.map(x=>Number(x.value)||0));el.innerHTML=items.map(x=>`<div class="bar-row"><div class="bar-label"><span>${escapeHtml(x.label)}</span><b>${currency?brl(x.value):money(x.value)}</b></div><div class="bar-track"><div class="bar-fill ${x.className||""}" style="width:${Math.max(x.value>0?2:0,(Number(x.value)||0)/max*100)}%"></div></div></div>`).join("")}
 function renderDashboard(){
-  const d=state.dashboard||{},c=d.caCounts||{};
-  const cards=[kpi("SKUs ativos",d.skus||0,"Produtos cadastrados","▦"),kpi("Saldo total",d.units||0,"Unidades disponíveis","◫"),kpi("Abaixo do mínimo",d.below||0,"Itens que exigem atenção","!"),kpi("Estoque zerado",d.zero||0,"Itens sem saldo","×"),kpi("Funcionários ativos",d.activeEmployees||0,"Base habilitada para entregas","♙")];
+  const base=state.dashboard||{},selected=$("dashboardItemFilter")?.value||"";
+  let d={...base};
+  if(selected){
+    const item=(base.itemMetrics||[]).find(x=>String(x.sku)===String(selected));
+    const product=state.stock.find(x=>String(x.sku)===String(selected));
+    if(item&&product){
+      const caCounts={validos:0,vencidos:0,suspensos:0,cancelados:0,naoConsultados:0,semCA:0};
+      const caMap={"VALIDO":"validos","VENCIDO":"vencidos","SUSPENSO":"suspensos","CANCELADO":"cancelados","NAO CONSULTADO":"naoConsultados","SEM CA":"semCA"};
+      caCounts[caMap[product.caSituacao]||"naoConsultados"]=1;
+      d={...base,skus:1,units:item.saldo,below:item.saldo<item.minimo?1:0,zero:item.saldo<=0?1:0,entries30:item.entries30,exits30:item.exits30,caCounts,priorities:[item.priority],consumption:item.exits90?[{label:item.label,qty:item.exits90}]:[]};
+    }
+  }
+  const c=d.caCounts||{};
+  const cards=[kpi("EPIs ativos",d.skus||0,selected?"Item selecionado":"Produtos cadastrados","▦"),kpi("Saldo total",d.units||0,"Unidades disponíveis","◫"),kpi("Abaixo do mínimo",d.below||0,"Itens que exigem atenção","!"),kpi("Estoque zerado",d.zero||0,"Itens sem saldo","×"),kpi("Funcionários ativos",base.activeEmployees||0,"Indicador geral da base","♙")];
   $("kpis").innerHTML=cards.join("");
-  $("movementChart").innerHTML=`<div class="chart-summary"><div><span class="legend-dot entry-dot"></span>Entradas<strong>${money(d.entries30||0)}</strong></div><div><span class="legend-dot exit-dot"></span>Saídas<strong>${money(d.exits30||0)}</strong></div></div>`;
   barChart("movementChart",[{label:"Entradas",value:d.entries30||0,className:"entry-fill"},{label:"Saídas",value:d.exits30||0,className:"exit-fill"}]);
   barChart("stockChart",[{label:"Dentro do mínimo",value:Math.max(0,(d.skus||0)-(d.below||0)),className:"entry-fill"},{label:"Abaixo do mínimo",value:Math.max(0,(d.below||0)-(d.zero||0)),className:"warn-fill"},{label:"Zerados",value:d.zero||0,className:"exit-fill"}]);
   barChart("caChart",[{label:"Válidos",value:c.validos||0,className:"entry-fill"},{label:"Vencidos",value:c.vencidos||0,className:"exit-fill"},{label:"Suspensos / cancelados",value:(c.suspensos||0)+(c.cancelados||0),className:"exit-fill"},{label:"Não consultados",value:c.naoConsultados||0,className:"warn-fill"},{label:"Sem CA",value:c.semCA||0,className:"neutral-fill"}]);
   barChart("consumptionChart",(d.consumption||[]).slice(0,6).map(x=>({label:x.label,value:x.qty,className:"blue-fill"})));
+  const monthly=(selected?(base.costByItem||[]).filter(x=>String(x.idEpi)===String(selected)):(base.costMonthly||[])).sort((a,b)=>a.month.localeCompare(b.month)).slice(-6);
+  barChart("costChart",monthly.flatMap(x=>[{label:x.month+" • Entradas",value:x.entry,className:"entry-fill"},{label:x.month+" • Saídas",value:x.exit,className:"exit-fill"}]),true);
   const rows=(d.priorities||[]).filter(x=>x.saldo<x.minimo||x.saldo<=0).map(x=>`<tr><td>${escapeHtml(x.label)}</td><td>${money(x.saldo)}</td><td>${money(x.minimo)}</td><td>${x.cobertura==null?"Sem histórico":x.cobertura+" dias"}</td><td>${money(x.sugerido)}</td><td><span class="status ${x.saldo<=0?"critical":"attention"}">${x.saldo<=0?"ZERADO":"ABAIXO DO MÍNIMO"}</span></td></tr>`).join("");
   $("alerts").innerHTML=rows?`<table><thead><tr><th>Produto</th><th>Saldo</th><th>Mínimo</th><th>Cobertura</th><th>Compra sugerida</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`:'<div class="empty">Nenhum item abaixo do mínimo no momento.</div>';
+}
+function renderGroupAnalysis(){
+  const selected=$("groupFilter")?.value||"",query=($("groupSearch")?.value||"").toLowerCase();
+  const filtered=state.stock.filter(x=>(!selected||(x.categoria||"Sem grupo")===selected)&&(`${x.label} ${x.sku} ${x.categoria}`).toLowerCase().includes(query));
+  const groups={};filtered.forEach(x=>{const g=x.categoria||"Sem grupo";(groups[g]||(groups[g]=[])).push(x)});
+  const names=Object.keys(groups).sort((a,b)=>a.localeCompare(b,"pt-BR"));
+  if(!names.length){$("groupAnalysis").innerHTML='<div class="panel empty">Nenhum material encontrado para os filtros selecionados.</div>';return;}
+  $("groupAnalysis").innerHTML=names.map(g=>{const items=groups[g].sort((a,b)=>a.label.localeCompare(b.label,"pt-BR"));const total=items.reduce((n,x)=>n+Number(x.saldo||0),0);const zero=items.filter(x=>x.saldo<=0).length;const below=items.filter(x=>x.saldo<x.minimo).length;const rows=items.map(x=>`<tr><td><strong>${escapeHtml(x.descricao||x.label)}</strong><small class="subline">${escapeHtml(x.variante||x.sku)}</small></td><td>${money(x.saldo)} ${escapeHtml(x.unidade)}</td><td>${money(x.minimo)}</td><td><span class="status ${x.saldo<=0?"critical":x.saldo<x.minimo?"attention":"ok"}">${x.saldo<=0?"ZERADO":x.saldo<x.minimo?"ABAIXO DO MÍNIMO":"DISPONÍVEL"}</span></td></tr>`).join("");return `<section class="panel group-card"><div class="group-heading"><div><span class="eyebrow">GRUPO DE MATERIAIS</span><h2>${escapeHtml(g)}</h2></div><div class="group-stats"><span><strong>${money(items.length)}</strong> modelos</span><span><strong>${money(total)}</strong> unidades</span><span><strong>${money(zero)}</strong> zerados</span><span><strong>${money(below)}</strong> abaixo do mínimo</span></div></div><div class="table-wrap"><table><thead><tr><th>Subgrupo / material</th><th>Saldo atual</th><th>Estoque mínimo</th><th>Situação</th></tr></thead><tbody>${rows}</tbody></table></div></section>`}).join("");
 }
 function renderStock(){const q=$("stockSearch").value.toLowerCase();const rows=state.stock.filter(x=>(x.label+" "+x.ca+" "+x.caSituacao).toLowerCase().includes(q)).map(x=>`<tr><td>${escapeHtml(x.label)}</td><td><strong>${money(x.saldo)}</strong> ${escapeHtml(x.unidade)}</td><td>${money(x.minimo)}</td><td>${escapeHtml(x.ca||"—")}</td><td>${date(x.caValidade)}</td><td><span class="status ${["VENCIDO","SUSPENSO","CANCELADO"].includes(x.caSituacao)?"critical":x.caSituacao==="VALIDO"?"ok":"attention"}">${escapeHtml(x.caSituacao||"NÃO CONSULTADO")}</span></td></tr>`).join("");$("stockTable").innerHTML=rows?`<table><thead><tr><th>Produto / variante</th><th>Saldo</th><th>Mínimo</th><th>CA</th><th>Validade CA</th><th>Situação CA</th></tr></thead><tbody>${rows}</tbody></table>`:'<div class="empty">Nenhum produto encontrado.</div>'}
 function renderCollaborators(){const el=$("collaboratorTable");if(!el)return;const rows=state.employees.map(e=>`<tr><td>${escapeHtml(e.matricula)}</td><td>${escapeHtml(e.nome)}</td><td>${escapeHtml(e.cr||"—")}</td><td><span class="status ${e.ativo?"ok":"attention"}">${e.ativo?"ATIVO":"INATIVO"}</span></td><td><button class="btn table-btn" type="button" data-edit-employee="${escapeHtml(e.matricula)}">Editar</button></td></tr>`).join("");el.innerHTML=rows?`<table><thead><tr><th>Matrícula</th><th>Nome</th><th>CR</th><th>Status</th><th>Ação</th></tr></thead><tbody>${rows}</tbody></table>`:"<div class=empty>Nenhum funcionário cadastrado.</div>";$("employeeCount").textContent=`${state.employees.length} registros (${state.employees.filter(e=>e.ativo).length} ativos)`}
@@ -66,12 +94,14 @@ $("refresh").onclick=()=>loadAll().catch(e=>toast(e.message));
 $("entryForm").onsubmit=async e=>{e.preventDefault();try{await api("movement",{tipo:"ENTRADA",sku:$("entryProduct").value,quantidade:Number($("entryQty").value),observacao:$("entryObs").value});e.target.reset();await loadAll();toast("Entrada registrada com sucesso.")}catch(err){toast(err.message)}};
 $("employeeMat").addEventListener("input",()=>{const m=$("employeeMat").value.trim();const e=state.employees.find(x=>x.matricula===m&&x.ativo);$("employeePreview").textContent=e?`${e.nome} • ${e.setor||"Setor não informado"} • matrícula ${e.matricula}`:"Matrícula não localizada ou funcionário inativo."});
 $("exitForm").onsubmit=async e=>{e.preventDefault();try{await api("movement",{tipo:"SAIDA",sku:$("exitProduct").value,quantidade:Number($("exitQty").value),matricula:$("employeeMat").value.trim(),motivo:$("exitReason").value,observacao:$("exitObs").value});e.target.reset();$("employeePreview").textContent="Informe a matrícula para localizar o funcionário.";await loadAll();toast("Entrega registrada com sucesso.")}catch(err){toast(err.message)}};
-$("productForm").onsubmit=async e=>{e.preventDefault();try{await api("product",{sku:$("pSku").value.trim(),descricao:$("pName").value.trim(),variante:$("pVariant").value.trim(),unidade:$("pUnit").value,categoria:$("pCategory").value,fabricante:$("pMaker").value,ca:$("pCa").value,caValidade:$("pCaExpiry").value,caSituacao:$("pCaStatus").value,minimo:Number($("pMin").value),estoqueSeguranca:Number($("pSafety").value),multiplo:Number($("pPack").value),precoUnitario:$("pPrice").value===""?"":Number($("pPrice").value)});e.target.reset();await loadAll();toast("Produto cadastrado.")}catch(err){toast(err.message)}};
+$("productForm").onsubmit=async e=>{e.preventDefault();try{await api("product",{epi:$("pName").value.trim(),subgrupo:$("pVariant").value.trim(),unidade:$("pUnit").value,grupo:$("pCategory").value,ca:$("pCa").value,caValidade:$("pCaExpiry").value,caSituacao:$("pCaStatus").value,minimo:Number($("pMin").value),estoqueSeguranca:Number($("pSafety").value),precoUnitario:$("pPrice").value===""?"":Number($("pPrice").value)});e.target.reset();await loadAll();toast("Produto cadastrado.")}catch(err){toast(err.message)}};
 $("collaboratorForm").onsubmit=async e=>{e.preventDefault();try{await api("collaborator",{matricula:$("cMatricula").value.trim(),nome:$("cNome").value.trim(),cr:$("cCR").value.trim(),ativo:$("cAtivo").checked});e.target.reset();$("cMatricula").readOnly=false;$("employeeFormTitle").textContent="Cadastrar funcionário";await loadAll();toast("Funcionário salvo.")}catch(err){toast(err.message)}};
 $("employeeClear").onclick=()=>{$("collaboratorForm").reset();$("cMatricula").readOnly=false;$("cAtivo").checked=true;$("employeeFormTitle").textContent="Cadastrar funcionário"};
 $("collaboratorTable").addEventListener("click",e=>{const b=e.target.closest("[data-edit-employee]");if(!b)return;const x=state.employees.find(v=>v.matricula===b.dataset.editEmployee);if(!x)return;$("cMatricula").value=x.matricula;$("cMatricula").readOnly=true;$("cNome").value=x.nome;$("cCR").value=x.cr||"";$("cAtivo").checked=x.ativo;$("employeeFormTitle").textContent="Atualizar funcionário";$("cNome").focus();window.scrollTo({top:0,behavior:"smooth"})});
 $("adjustForm").onsubmit=async e=>{e.preventDefault();try{await api("movement",{tipo:"AJUSTE",sku:$("adjustProduct").value,quantidade:Number($("adjustQty").value),observacao:$("adjustReason").value});e.target.reset();await loadAll();toast("Ajuste auditado registrado.")}catch(err){toast(err.message)}};
 $("stockSearch").oninput=renderStock;$("historySearch").oninput=renderHistory;
+$("dashboardItemFilter").addEventListener("change",renderDashboard);
+$("groupFilter").addEventListener("change",renderGroupAnalysis);$("groupSearch").addEventListener("input",renderGroupAnalysis);
 $("tstForm").addEventListener("submit",async e=>{e.preventDefault();try{await api("tstUser",{matricula:$("tstMatricula").value.trim(),nome:$("tstNome").value.trim(),senha:$("tstSenha").value,ativo:$("tstAtivo").checked});e.target.reset();$("tstAtivo").checked=true;$("tstMatricula").readOnly=false;await loadAll();toast("Usuário TST salvo.")}catch(err){toast(err.message)}});
 $("tstTable").addEventListener("click",e=>{const b=e.target.closest("[data-edit-tst]");if(!b)return;const u=state.tstUsers.find(x=>x.matricula===b.dataset.editTst);if(!u)return;$("tstMatricula").value=u.matricula;$("tstMatricula").readOnly=true;$("tstNome").value=u.nome;$("tstSenha").value="";$("tstAtivo").checked=u.ativo;$("tstNome").focus()});
 $("tstClear").addEventListener("click",()=>{$("tstForm").reset();$("tstMatricula").readOnly=false;$("tstAtivo").checked=true});
