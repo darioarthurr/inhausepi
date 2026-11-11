@@ -33,3 +33,6 @@
 @media(max-width:760px){.filter-panel{padding:17px;gap:12px}.dashboard-filter,.group-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.filter-title,.filter-panel small{grid-column:1/-1}.group-toolbar .filter-field:last-child{grid-column:1/-1}.group-stats{gap:8px}.selected-file{width:100%;min-width:0}}
 @media(max-width:520px){.dashboard-filter,.group-toolbar{grid-template-columns:1fr}.filter-title,.filter-panel small,.group-toolbar .filter-field:last-child{grid-column:1}.import-actions{align-items:stretch}.import-action-btn{width:100%}.selected-file{padding:2px 1px}}
 
+
+/* v1.1.20 — lista de itens sem saída e alinhamento dos botões CSV */
+.idle-exit-panel{margin:0 0 16px}.idle-exit-panel .panel-heading{align-items:center}.import-actions{align-items:center!important}.import-actions .import-action-btn{box-sizing:border-box;vertical-align:middle}.import-actions label.import-action-btn{display:inline-flex;align-items:center;justify-content:center;line-height:19px;height:43px;padding-top:11px;padding-bottom:11px;margin:0;transform:none}.import-actions button.import-action-btn{height:43px;line-height:19px;margin:0}
