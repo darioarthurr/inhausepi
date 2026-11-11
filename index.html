@@ -40,6 +40,7 @@
   <button data-tab="cadastros">Produtos</button>
   <button data-tab="ajuste" class="admin-only">Ajuste de estoque</button>
   <button data-tab="tsts" class="admin-only">Gestão de TSTs</button>
+  <button data-tab="importacao" class="admin-only">Importação de dados</button>
   <button data-tab="senha">Minha senha</button>
 </nav>
 <main>
@@ -98,6 +99,18 @@
     <label>EPI<input id="pName" required maxlength="120" placeholder="Ex.: Bota PVC, Luva nitrílica"></label><label>Grupo<input id="pCategory" required maxlength="60" placeholder="Ex.: Bota, Luva, Capacete"></label><label>Subgrupo / tamanho<input id="pVariant" maxlength="80" placeholder="Ex.: PVC 41, Biqueira 45, Nitrílica G"></label><label>Unidade<select id="pUnit"><option>UN</option><option>PAR</option><option>CAIXA</option><option>PACOTE</option></select></label><label>Número do CA<input id="pCa" maxlength="30"></label><label>Validade do CA<input id="pCaExpiry" type="date"></label><label>Situação do CA<select id="pCaStatus"><option value="NAO CONSULTADO">Não consultado</option><option value="VALIDO">Válido</option><option value="SUSPENSO">Suspenso</option><option value="CANCELADO">Cancelado</option></select></label><label>Estoque mínimo<input id="pMin" type="number" min="0" step="1" value="0"></label><label>Estoque de segurança (quantidade)<input id="pSafety" type="number" min="0" step="1" value="0"></label><label id="priceField">Preço unitário<input id="pPrice" type="number" min="0" step="0.01"></label><button class="btn primary wide" type="submit">Cadastrar produto</button>
   </form></div>
   <div class="panel info-panel"><h2>Consulta de Certificado de Aprovação</h2><p>O sistema mantém o controle manual do CA. Consulte o número no portal oficial do Ministério do Trabalho e registre a situação e a validade no cadastro do produto.</p><a href="https://caepi.trabalho.gov.br/internet/ConsultaCAInternet.aspx" target="_blank" rel="noopener">Consultar CA no portal oficial do MTE ↗</a></div>
+</section>
+
+<section id="tab-importacao" class="tab-page hidden admin-only">
+  <div class="page-intro"><span class="eyebrow">CARGA INICIAL • ADMINISTRADOR</span><h1>Importação de dados</h1><p>Importe EPIs, funcionários e saldos iniciais em lote. Os identificadores internos são gerados automaticamente.</p></div>
+  <div class="panel form-panel"><div class="form-grid">
+    <label>Tipo de importação<select id="importType"><option value="PRODUTOS">EPIs / Produtos</option><option value="COLABORADORES">Funcionários</option><option value="ESTOQUE">Estoque inicial</option></select></label>
+    <div class="wide import-help" id="importHelp">Baixe o modelo, preencha no Excel e salve como CSV UTF-8 separado por ponto e vírgula.</div>
+    <div class="wide form-actions"><button class="btn outline" id="downloadTemplate" type="button">Baixar modelo CSV</button><label class="file-pick">Selecionar arquivo CSV<input id="importFile" type="file" accept=".csv,text/csv" hidden></label></div>
+    <div class="wide" id="importPreview"><div class="empty">Selecione um arquivo para visualizar os registros antes da importação.</div></div>
+    <button class="btn primary wide" id="confirmImport" type="button" disabled>Confirmar importação</button>
+  </div></div>
+  <div class="panel info-panel"><h2>Ordem recomendada da carga inicial</h2><ol><li>Importar EPIs / Produtos.</li><li>Importar Funcionários.</li><li>Importar Estoque inicial.</li></ol><p>Registros duplicados são ignorados. A importação não apaga nem substitui cadastros existentes. Limite de 1.000 linhas por arquivo.</p></div>
 </section>
 <section id="tab-ajuste" class="tab-page hidden admin-only"><div class="page-intro"><span class="eyebrow">CONTROLE ADMINISTRATIVO</span><h1>Ajuste de estoque</h1><p>Use esta função somente para correções justificadas de saldo. Toda operação fica registrada na auditoria.</p></div><div class="panel form-panel"><form id="adjustForm" class="form-grid"><label class="wide">Produto<select id="adjustProduct" required></select></label><label>Quantidade (+ ou −)<input id="adjustQty" type="number" step="1" required></label><label class="wide">Justificativa obrigatória<textarea id="adjustReason" required rows="3"></textarea></label><button class="btn warning wide" type="submit">Registrar ajuste auditado</button></form></div></section>
 <section id="tab-tsts" class="tab-page hidden admin-only"><div class="page-intro"><span class="eyebrow">ADMINISTRAÇÃO DE ACESSOS</span><h1>Gestão de TSTs</h1><p>Crie e mantenha os acessos dos técnicos de segurança do trabalho.</p></div><div class="panel"><form id="tstForm" class="form-grid"><label>Matrícula<input id="tstMatricula" maxlength="40" required></label><label>Nome completo<input id="tstNome" maxlength="120" required></label><label>Senha inicial / nova senha<input id="tstSenha" type="password" minlength="6" autocomplete="new-password"><small>Obrigatória no cadastro; opcional na edição.</small></label><label class="check-label"><input id="tstAtivo" type="checkbox" checked> Usuário ativo</label><div class="wide form-actions"><button class="btn primary" type="submit">Salvar TST</button><button class="btn outline" id="tstClear" type="button">Limpar</button></div></form></div><div class="panel"><h2>Usuários TST cadastrados</h2><div id="tstTable" class="table-wrap"></div></div></section>

@@ -1,146 +1,30 @@
-# Gestão de EPIs — Grupo GPS
+# Gestão de EPIs — Grupo GPS | Versão 1.1.7
 
-**Pacote 1.1.5 — 11/11/2026**
+## Estrutura da planilha (base nova)
+Abas oficiais: PRODUTOS, ESTOQUE, MOVIMENTACOES, USUARIOS, COLABORADORES, AUDITORIA e CONFIGURACOES. Não há mais abas FINANCEIRO ou INDICADORES; custo e histórico ficam registrados na movimentação.
 
-Esta edição remove a integração automática com a base CAEPI do MTE. O número do CA, a situação e a data de validade são registrados manualmente após consulta ao portal oficial. O cadastro não depende de download, importação ou validação externa. O cache do PWA foi versionado para forçar a atualização da interface.
+### Cadastro de EPI
+Campos: EPI, GRUPO, SUBGRUPO, UNIDADE, CA, CA_VALIDADE, CA_SITUACAO, MINIMO, ESTOQUE_SEGURANCA_QTD e PRECO_UNITARIO. O ID_EPI é gerado automaticamente e não aparece para o usuário. SKU/código, fabricante e múltiplo de compra foram removidos.
 
-Projeto inicial funcional para GitHub Pages + Google Apps Script + Google Sheets. A matrícula é a identificação principal do colaborador nas entregas.
+### Custo histórico
+Cada entrada/saída grava PRECO_UNITARIO_REF e CUSTO_TOTAL na linha da movimentação. O painel apresenta custos mensais de entrada e saída; ao filtrar um EPI, o gráfico considera apenas aquele EPI. O custo usa o preço unitário cadastrado no momento da movimentação.
 
-## 1. Estrutura entregue
+## Implantação inicial — ATENÇÃO
+Esta versão foi preparada para uma base nova, ainda sem carga inicial. No Apps Script, configure as propriedades ADMIN_MATRICULA e ADMIN_SENHA. Em seguida execute uma única vez `recriarBaseLimpa("RECRIAR BASE EPIs")` e depois `setupSistema()`. A função recriarBaseLimpa é destrutiva: remove abas antigas fora da estrutura nova e limpa as abas do sistema. Use somente na planilha de implementação sem dados que devam ser preservados.
 
-- `index.html`, `styles.css`, `app.js`: interface responsiva.
-- `config.js`: URL do Web App do Apps Script.
-- `sw.js`, `manifest.webmanifest`: instalação PWA; o cache é apenas da interface. Movimentações exigem internet.
-- `backend/Code.gs`: API, autenticação, regras de acesso, movimentações e indicadores.
+Depois publique o Apps Script como Web App e configure a URL /exec em config.js. Suba os arquivos do frontend para o GitHub mantendo a estrutura de assets/icons.
 
-## 2. Criar a planilha
+## Carga inicial
+Cadastre/importar primeiro os EPIs em PRODUTOS e os funcionários em COLABORADORES. Para carga inicial de saldo, preencha ESTOQUE com ID_EPI, SALDO_INICIAL e LOCAL. O ID_EPI é criado pelo sistema no cadastro do EPI; para importação em lote, use o ID_EPI retornado/gerado e não invente identificadores.
 
-1. Crie uma planilha Google chamada `Gestão de EPIs - Grupo GPS`.
-2. Abra **Extensões > Apps Script**.
-3. Cole todo o conteúdo de `backend/Code.gs` no arquivo `Code.gs`.
-4. Em **Configurações do projeto > Propriedades do script**, crie:
-   - `ADMIN_MATRICULA` = matrícula do administrador inicial.
-   - `ADMIN_SENHA` = senha temporária forte para o primeiro acesso.
-5. Salve. Execute `setupSistema()` no editor e autorize as permissões.
-6. A função cria as abas e cabeçalhos. Não execute novamente para “zerar” dados: ela preserva as linhas existentes.
-
-Abas criadas: `PRODUTOS`, `ESTOQUE`, `MOVIMENTACOES`, `USUARIOS`, `COLABORADORES`, `AUDITORIA`, `INDICADORES`, `FINANCEIRO`, `CONFIGURACOES`. Se existir uma aba antiga `BASE_CAEPI`, ela não será usada nem apagada.
-
-## 3. Carga inicial manual
-
-### COLABORADORES
-Preencha a partir da linha 2:
-`MATRICULA | NOME | SETOR | CENTRO_CUSTO | ATIVO`
-
-A matrícula deve ser única e armazenada como texto para preservar zeros à esquerda. Use `TRUE` para ativos e `FALSE` para inativos.
-
-### PRODUTOS
-Cadastre os produtos com SKU único por variante/tamanho. Exemplo:
-- `LUVA-NITR-M` / Luva nitrílica / M
-- `LUVA-NITR-G` / Luva nitrílica / G
-
-Preencha o número do CA, estoque mínimo, estoque de segurança em quantidade e múltiplo de compra. Ao cadastrar, informe o CA, a data de validade e a situação após consulta manual no portal oficial. O sistema não consulta o MTE, não valida o número do CA e não preenche dados automaticamente.
-
-### ESTOQUE
-Preencha:
-`SKU | SALDO_INICIAL | LOCAL`
-
-Uma linha por SKU. Esse é o saldo de abertura. Depois da implantação, não altere o saldo diretamente: registre entradas, saídas ou ajustes auditados na aplicação.
-
-## 4. Cadastrar usuários
-
-Na aba `USUARIOS`, colunas:
-`MATRICULA | NOME | SENHA_SHA256 | PERFIL | ATIVO`
-
-Para gerar hash de senha:
-1. No Apps Script, execute `gerarHashSenha("SENHA_FORTE")`.
-2. Abra **Executar > Registros** e copie o hash hexadecimal.
-3. Cadastre matrícula, nome, hash, perfil (`ADMIN` ou `TST`) e `TRUE`.
-
-O primeiro ADMIN é criado por `setupSistema()` usando as propriedades `ADMIN_MATRICULA` e `ADMIN_SENHA`. Depois do primeiro acesso, ADMIN e TST podem trocar a própria senha na aba **Minha senha**, informando a senha atual e a nova senha. Em caso de perda da senha, o ADMIN pode redefinir a senha do TST pela aba **Gestão de TSTs**; para recuperação do ADMIN, gere novo hash e substitua `SENHA_SHA256` na linha correspondente. Não compartilhe a planilha com usuários TST como editores; eles acessam os dados pela aplicação.
-
-## 5. Publicar o Apps Script
-
-1. No Apps Script, clique em **Implantar > Nova implantação**.
-2. Tipo: **Aplicativo da Web**.
-3. Executar como: **Eu**.
-4. Quem pode acessar: selecione a opção compatível com a política da sua organização. Para login próprio por matrícula/senha, normalmente será necessário acesso a usuários autenticados por link; confirme com TI/GPS antes de publicar.
-5. Clique em Implantar e copie a URL terminada em `/exec`.
-
-A API usa POST `application/x-www-form-urlencoded`. Teste a URL abrindo-a no navegador: deve retornar `API Gestão de EPIs ativa`.
-
-## 6. Publicar o frontend no GitHub Pages
-
-1. Crie um repositório GitHub, por exemplo `gestao-epi-gps`.
-2. Envie os arquivos da raiz deste pacote (`index.html`, `styles.css`, `app.js`, `config.js`, `sw.js`, `manifest.webmanifest`) para a raiz do repositório e envie também a pasta `assets/icons/` mantendo sua estrutura.
-3. Abra `config.js` e substitua `COLE_A_URL_DO_GOOGLE_APPS_SCRIPT_AQUI` pela URL `/exec` copiada.
-4. Em **Settings > Pages**, selecione `Deploy from a branch`, branch `main`, pasta `/ (root)`.
-5. Aguarde a publicação e abra o endereço do Pages. No celular, use “Adicionar à tela inicial” ou “Instalar app”.
-
-## 7. Consulta manual do CA
-
-- Não existe integração automática, download de CSV, importação, sincronização ou validação de CA junto ao MTE nesta versão.
-- Para conferir um CA, utilize o [portal oficial CAEPI do MTE](https://caepi.trabalho.gov.br/internet/ConsultaCAInternet.aspx).
-- Após a consulta, registre no cadastro do produto o número do CA, a situação e a data de validade exibida no portal.
-- Ao migrar da versão 1.1, confira manualmente os campos `CA_VALIDADE` e `CA_SITUACAO` já existentes: eles podem conter dados trazidos da antiga importação e não são atualizados nem confirmados nesta versão.
-- O painel classifica como vencido o CA cuja data de validade informada já passou. As situações válido, suspenso e cancelado dependem do preenchimento manual e não representam confirmação automática do MTE.
-- A validade do CA não é a validade física do EPI. Verifique também lote, armazenamento e prazo de validade indicado pelo fabricante/importador.
-
-## 8. Regras operacionais
-
-- Saída exige matrícula existente e colaborador ativo; o backend consulta `COLABORADORES` e grava matrícula, nome e setor na movimentação.
-- O TST pode registrar entradas/saídas, consultar estoque/histórico, cadastrar produtos e cadastrar/atualizar colaboradores. O ADMIN também pode realizar ajustes de estoque.
-- O backend valida permissões; ocultar botões na tela não é a única barreira.
-- Não há fila offline de lançamentos. Sem internet, não registre movimentações.
-- Ajustes exigem justificativa e são registrados em `AUDITORIA`.
-- O saldo é calculado: saldo inicial + entradas - saídas + ajustes.
-- A compra sugerida considera `máx(0, estoque mínimo + estoque de segurança em quantidade − saldo atual)`, arredondada para cima ao múltiplo de compra. O indicador de entradas e saídas soma as quantidades movimentadas nos últimos 30 dias. Consumo médio usa os últimos 90 dias; sem histórico, cobertura fica indisponível e a previsão pode ser insuficiente.
-- A validade e situação do CA são exibidas na posição de estoque com base nos dados informados manualmente. O sistema não consulta nem valida o CA no MTE. O CA deve estar válido na comercialização/aquisição; após adquirido, o fornecimento deve observar armazenamento e prazo de validade do EPI indicados pelo fabricante/importador. A validade do CA não é a validade física do EPI. A rotina não bloqueia entrega por situação do CA.
-
-## 9. Testes obrigatórios antes do uso real
-
-1. Login ADMIN e TST.
-2. TST consegue cadastrar produtos e funcionários, lançar entradas e saídas e trocar a própria senha, mas não consegue ajustar estoque.
-3. Saída com matrícula válida grava colaborador correto.
-4. Saída com matrícula inexistente/inativa é recusada.
-5. Saída maior que saldo é recusada.
-6. Entrada, saída e ajuste alteram saldo conforme esperado.
-7. Múltiplos SKUs para tamanhos diferentes mantêm saldos separados.
-8. Troca de senha exige a senha atual e atualiza o hash armazenado em `USUARIOS`.
-9. Verifique se política de acesso do Apps Script e da organização atende à LGPD e às regras internas.
-
-## 10. Limitações desta entrega
-
-- Sem importação de colaboradores/estoque por arquivo: carga inicial é manual na planilha, conforme combinado.
-- O cadastro de colaboradores (matrícula, nome e CR) é feito pelo aplicativo. A criação de credenciais de acesso (matrícula, hash de senha e perfil ADMIN/TST) continua na aba USUARIOS para evitar criar usuários sem senha.
-- Correção de movimentação por estorno/reversão e alertas automáticos por CA vencido são evoluções recomendadas antes de operação ampla.
-- O código precisa ser implantado e validado no ambiente Google/GitHub da organização; não foi publicado em sua conta nem testado com sua planilha.
+## Validações
+A sintaxe JavaScript pode ser verificada com `node --check app.js` e `node --check Code.gs` (após copiar para extensão .js). A integração real deve ser homologada após implantação no Apps Script e conexão à planilha.
 
 
-## Arquivo backend desta versão
+## Importação em lote (v1.1.8)
+Acesse **Importação de dados** com perfil ADMIN. Baixe o modelo CSV correspondente, preencha no Excel e salve como **CSV UTF-8** (separador ponto e vírgula). Importe na ordem: EPIs, funcionários e estoque inicial. O sistema gera `ID_EPI` automaticamente. Duplicidades são ignoradas; erros por linha são apresentados após o processamento. Limite: 1.000 linhas por arquivo. A tela aceita CSV; arquivos XLSX devem ser salvos como CSV UTF-8 antes do envio.
 
-O backend está em `backend/Code.gs`. Há também uma cópia na raiz (`Code.gs`); ambos têm o mesmo conteúdo. Use apenas um deles ao atualizar o Apps Script.
-
-
-### Atualização e instalação
-- O manifesto inclui ícones PNG de 192×192 e 512×512, além de ícone Apple Touch.
-- O botão **Atualizar versão** solicita a verificação do Service Worker; ao detectar uma versão nova, ativa o cache atualizado e recarrega a interface.
-- Ao publicar uma nova versão, atualize a constante `VERSION` em `sw.js` e a constante `APP_VERSION` em `app.js`, envie os arquivos e publique a alteração no GitHub Pages.
-
-
-### Gestão de TSTs — versão 1.1.4
-- O ADMIN possui a aba `Gestão de TSTs` para cadastrar, editar nome, redefinir senha e ativar/desativar usuários TST.
-- O perfil é fixado como `TST` pela aplicação; esta tela não permite alterar contas ADMIN.
-- A senha é armazenada como hash SHA-256; ao editar, deixe a senha em branco para manter a senha atual.
-- Os ícones PWA ficam em `assets/icons/`; o manifesto, os links de ícone e o cache do service worker apontam para esse caminho.
-
-
-### Alterações da versão 1.1.5
-- A interface agora possui abas independentes para `Funcionários` e `Ajuste de estoque`; os cadastros de funcionários deixam a aba Produtos. A base continua armazenada na aba dedicada `COLABORADORES` da planilha, sem duplicar nem apagar os registros existentes.
-- ADMIN e TST podem cadastrar e atualizar funcionários pela aba Funcionários. A matrícula permanece como chave de identificação nas entregas.
-- A entrada de materiais foi simplificada para produto, quantidade e observação. Fornecedor e demais dados cadastrais não são solicitados no lançamento.
-- O ajuste de estoque tem aba própria e permanece restrito ao ADMIN, com justificativa e auditoria.
-- ADMIN e TST podem alterar a própria senha pela aba Minha senha, mediante confirmação da senha atual. O ADMIN também mantém a gestão de credenciais TST.
-- O painel ganhou gráficos de movimentação, saúde do estoque, situação dos CAs e consumo por item, além dos indicadores numéricos.
-- Interface visual reorganizada, com navegação por área funcional, formulários simplificados e layout responsivo.
-- Para atualizar, substitua `Code.gs` no Apps Script e publique uma nova implantação; no GitHub, envie todos os arquivos da raiz e a pasta `assets/icons/`. Não é necessária criação manual de novas abas na planilha.
+Cabeçalhos dos modelos:
+- EPIs: `EPI;GRUPO;SUBGRUPO;UNIDADE;CA;CA_VALIDADE;CA_SITUACAO;MINIMO;ESTOQUE_SEGURANCA_QTD;PRECO_UNITARIO`
+- Funcionários: `MATRICULA;NOME;CR;SETOR;CENTRO_CUSTO;ATIVO`
+- Estoque inicial: `EPI;GRUPO;SUBGRUPO;SALDO_INICIAL;LOCAL`
