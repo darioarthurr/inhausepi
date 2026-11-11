@@ -1,6 +1,6 @@
 # Gestão de EPIs — Grupo GPS
 
-**Pacote 1.1.4 — 11/11/2026**
+**Pacote 1.1.5 — 11/11/2026**
 
 Esta edição remove a integração automática com a base CAEPI do MTE. O número do CA, a situação e a data de validade são registrados manualmente após consulta ao portal oficial. O cadastro não depende de download, importação ou validação externa. O cache do PWA foi versionado para forçar a atualização da interface.
 
@@ -57,7 +57,7 @@ Para gerar hash de senha:
 2. Abra **Executar > Registros** e copie o hash hexadecimal.
 3. Cadastre matrícula, nome, hash, perfil (`ADMIN` ou `TST`) e `TRUE`.
 
-O primeiro ADMIN é criado por `setupSistema()` usando as propriedades `ADMIN_MATRICULA` e `ADMIN_SENHA`. Para trocar a senha, gere novo hash e substitua `SENHA_SHA256` na linha do usuário. Não compartilhe a planilha com usuários TST como editores; eles acessam os dados pela aplicação.
+O primeiro ADMIN é criado por `setupSistema()` usando as propriedades `ADMIN_MATRICULA` e `ADMIN_SENHA`. Depois do primeiro acesso, ADMIN e TST podem trocar a própria senha na aba **Minha senha**, informando a senha atual e a nova senha. Em caso de perda da senha, o ADMIN pode redefinir a senha do TST pela aba **Gestão de TSTs**; para recuperação do ADMIN, gere novo hash e substitua `SENHA_SHA256` na linha correspondente. Não compartilhe a planilha com usuários TST como editores; eles acessam os dados pela aplicação.
 
 ## 5. Publicar o Apps Script
 
@@ -100,13 +100,14 @@ A API usa POST `application/x-www-form-urlencoded`. Teste a URL abrindo-a no nav
 ## 9. Testes obrigatórios antes do uso real
 
 1. Login ADMIN e TST.
-2. TST consegue cadastrar produtos e colaboradores, mas não consegue ajustar estoque.
+2. TST consegue cadastrar produtos e funcionários, lançar entradas e saídas e trocar a própria senha, mas não consegue ajustar estoque.
 3. Saída com matrícula válida grava colaborador correto.
 4. Saída com matrícula inexistente/inativa é recusada.
 5. Saída maior que saldo é recusada.
 6. Entrada, saída e ajuste alteram saldo conforme esperado.
 7. Múltiplos SKUs para tamanhos diferentes mantêm saldos separados.
-8. Verifique se política de acesso do Apps Script e da organização atende à LGPD e às regras internas.
+8. Troca de senha exige a senha atual e atualiza o hash armazenado em `USUARIOS`.
+9. Verifique se política de acesso do Apps Script e da organização atende à LGPD e às regras internas.
 
 ## 10. Limitações desta entrega
 
@@ -132,3 +133,14 @@ O backend está em `backend/Code.gs`. Há também uma cópia na raiz (`Code.gs`)
 - O perfil é fixado como `TST` pela aplicação; esta tela não permite alterar contas ADMIN.
 - A senha é armazenada como hash SHA-256; ao editar, deixe a senha em branco para manter a senha atual.
 - Os ícones PWA ficam em `assets/icons/`; o manifesto, os links de ícone e o cache do service worker apontam para esse caminho.
+
+
+### Alterações da versão 1.1.5
+- A interface agora possui abas independentes para `Funcionários` e `Ajuste de estoque`; os cadastros de funcionários deixam a aba Produtos. A base continua armazenada na aba dedicada `COLABORADORES` da planilha, sem duplicar nem apagar os registros existentes.
+- ADMIN e TST podem cadastrar e atualizar funcionários pela aba Funcionários. A matrícula permanece como chave de identificação nas entregas.
+- A entrada de materiais foi simplificada para produto, quantidade e observação. Fornecedor e demais dados cadastrais não são solicitados no lançamento.
+- O ajuste de estoque tem aba própria e permanece restrito ao ADMIN, com justificativa e auditoria.
+- ADMIN e TST podem alterar a própria senha pela aba Minha senha, mediante confirmação da senha atual. O ADMIN também mantém a gestão de credenciais TST.
+- O painel ganhou gráficos de movimentação, saúde do estoque, situação dos CAs e consumo por item, além dos indicadores numéricos.
+- Interface visual reorganizada, com navegação por área funcional, formulários simplificados e layout responsivo.
+- Para atualizar, substitua `Code.gs` no Apps Script e publique uma nova implantação; no GitHub, envie todos os arquivos da raiz e a pasta `assets/icons/`. Não é necessária criação manual de novas abas na planilha.
