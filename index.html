@@ -79,7 +79,7 @@
 <section id="tab-funcionarios" class="tab-page hidden">
   <div class="page-intro"><span class="eyebrow">BASE DE PESSOAS</span><h1>Funcionários</h1><p>Cadastro centralizado para identificação nas entregas de EPI. ADMIN e TST podem incluir e atualizar registros.</p></div>
   <div class="panel form-panel"><h2 id="employeeFormTitle">Cadastrar funcionário</h2><form id="collaboratorForm" class="form-grid">
-    <label>Matrícula<input id="cMatricula" maxlength="40" required></label><label>Nome completo<input id="cNome" maxlength="120" required></label><label>CR<input id="cCR" maxlength="60"></label>
+    <label>Matrícula<input id="cMatricula" maxlength="40" required></label><label>Nome completo<input id="cNome" maxlength="120" required></label><label>CR<input id="cCR" maxlength="60"></label><label class="check-label"><input id="cAtivo" type="checkbox" checked> Funcionário ativo</label>
     <div class="wide form-actions"><button class="btn primary" type="submit">Salvar funcionário</button><button class="btn outline" id="employeeClear" type="button">Limpar</button></div>
   </form></div>
   <div class="panel"><div class="panel-heading"><h2>Base de funcionários</h2><span id="employeeCount" class="period-tag"></span></div><div id="collaboratorTable" class="table-wrap"></div></div>
@@ -95,7 +95,7 @@
 <section id="tab-tsts" class="tab-page hidden admin-only"><div class="page-intro"><span class="eyebrow">ADMINISTRAÇÃO DE ACESSOS</span><h1>Gestão de TSTs</h1><p>Crie e mantenha os acessos dos técnicos de segurança do trabalho.</p></div><div class="panel"><form id="tstForm" class="form-grid"><label>Matrícula<input id="tstMatricula" maxlength="40" required></label><label>Nome completo<input id="tstNome" maxlength="120" required></label><label>Senha inicial / nova senha<input id="tstSenha" type="password" minlength="6" autocomplete="new-password"><small>Obrigatória no cadastro; opcional na edição.</small></label><label class="check-label"><input id="tstAtivo" type="checkbox" checked> Usuário ativo</label><div class="wide form-actions"><button class="btn primary" type="submit">Salvar TST</button><button class="btn outline" id="tstClear" type="button">Limpar</button></div></form></div><div class="panel"><h2>Usuários TST cadastrados</h2><div id="tstTable" class="table-wrap"></div></div></section>
 <section id="tab-senha" class="tab-page hidden"><div class="page-intro"><span class="eyebrow">SEGURANÇA DA CONTA</span><h1>Minha senha</h1><p>Altere sua senha de acesso. A senha atual será solicitada para confirmar a operação.</p></div><div class="panel form-panel"><form id="passwordForm" class="form-grid"><label class="wide">Senha atual<input id="currentPassword" type="password" autocomplete="current-password" required></label><label>Nova senha<input id="newPassword" type="password" minlength="6" autocomplete="new-password" required><small>Mínimo de 6 caracteres.</small></label><label>Confirmar nova senha<input id="confirmPassword" type="password" minlength="6" autocomplete="new-password" required></label><button class="btn primary wide" type="submit">Atualizar minha senha</button></form></div></section>
 </main>
-<footer>Powered by Grupo GPS <span>•</span> Versão 1.1.5</footer>
+<footer>Powered by Grupo GPS <span>•</span> Versão 1.1.6</footer>
 </div>
 <script src="config.js"></script><script src="app.js"></script>
 </body></html>
