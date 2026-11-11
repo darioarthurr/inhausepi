@@ -28,3 +28,24 @@ Cabeçalhos dos modelos:
 - EPIs: `EPI;GRUPO;SUBGRUPO;UNIDADE;CA;CA_VALIDADE;CA_SITUACAO;MINIMO;ESTOQUE_SEGURANCA_QTD;PRECO_UNITARIO`
 - Funcionários: `MATRICULA;NOME;CR;SETOR;CENTRO_CUSTO;ATIVO`
 - Estoque inicial: `EPI;GRUPO;SUBGRUPO;SALDO_INICIAL;LOCAL`
+
+
+## Versão 1.1.9 — melhorias integradas
+
+- A aba **Gestão de TSTs** foi substituída por **Gestão de usuários**, com cadastro e edição dos perfis `TST` e `ADMIN`.
+- O backend impede que um administrador retire o próprio perfil ADMIN ou desative a própria conta e protege a existência de pelo menos um ADMIN ativo.
+- A Visão geral recebeu filtros por ano e por produto. Movimentações, consumo e custos são recalculados pelo período escolhido; saldo, estoque mínimo e situação dos CAs continuam representando a posição atual.
+- A Análise por grupos recebeu filtro por ano, totais anuais de entradas e saídas e filtros visuais padronizados.
+- A posição de estoque e a análise por grupos mostram dias desde a última movimentação efetiva (entrada, saída ou ajuste não estornado). Quando não existe movimentação, a referência é a data de cadastro do produto; se essa data também não existir no histórico, o sistema informa que não há data de referência.
+- Os modelos CSV são gerados no navegador com BOM UTF-8, delimitador `;` e download com URL temporária; o seletor de arquivo foi transformado em botão visual e exibe o nome do arquivo escolhido.
+
+### Atualização
+
+1. Publique os arquivos do frontend desta versão no mesmo local do GitHub Pages, substituindo os arquivos antigos.
+2. No projeto Google Apps Script, substitua o conteúdo do arquivo principal pelo `Code.gs` desta versão (o arquivo `backend/Code.gs` é uma cópia idêntica).
+3. Salve e crie uma nova implantação/versionamento do Web App do Apps Script. Se a URL `/exec` permanecer a mesma, não é necessário alterar `config.js`; se criar uma implantação com URL diferente, atualize `API_URL`.
+4. No navegador, use **Atualizar** ou faça recarga completa para eliminar o cache antigo.
+
+**Compatibilidade de dados:** não há alteração nos cabeçalhos das abas existentes nem necessidade de recriar a planilha. A Gestão de usuários utiliza a aba `USUARIOS` existente.
+
+**Validação realizada neste pacote:** sintaxe JavaScript do frontend e do backend, JSON do manifesto, igualdade entre `Code.gs` e `backend/Code.gs` e integridade do ZIP. A execução real contra a planilha Google e a implantação do Apps Script dependem do ambiente do usuário e não foram simuladas.

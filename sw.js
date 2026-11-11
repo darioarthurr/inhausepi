@@ -1,4 +1,4 @@
-const VERSION="1.1.8";
+const VERSION="1.1.9";
 const CACHE="gestao-epi-gps-"+VERSION;
 const ASSETS=["./","./index.html","./styles.css","./config.js","./app.js","./manifest.webmanifest","./assets/icons/icon-192.png","./assets/icons/icon-512.png"];
 self.addEventListener("install",event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)));});
