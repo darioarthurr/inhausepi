@@ -6,5 +6,30 @@
 
 .file-pick{display:inline-flex;align-items:center;justify-content:center;padding:11px 16px;border:1px solid var(--line,#d8dee8);border-radius:10px;background:var(--surface,#fff);font-weight:650;cursor:pointer;min-height:42px}.import-help{padding:12px 14px;background:var(--soft,#f3f6fa);border-radius:10px;color:var(--muted,#526174);font-size:.92rem}.import-help + .wide{display:flex;gap:10px;align-items:center;flex-wrap:wrap}#importPreview{min-width:0;overflow:auto}#importPreview table{font-size:.86rem}#confirmImport:disabled{opacity:.45;cursor:not-allowed}
 
-/* v1.1.9 — filtros e importação */
-.filter-panel{display:grid;grid-template-columns:minmax(170px,.7fr) minmax(180px,1fr) minmax(180px,1fr);gap:12px;align-items:end;padding:18px 20px}.filter-title{grid-column:1/-1;display:flex;align-items:baseline;gap:10px}.filter-title .eyebrow{margin:0}.filter-title strong{font-size:14px;color:var(--navy)}.filter-panel label{display:flex;flex-direction:column;gap:7px;color:#526779;font-size:11px;font-weight:750}.filter-control{width:100%;min-width:0;height:43px;padding:10px 13px;border:1px solid #d5e0e8;border-radius:10px;background:linear-gradient(180deg,#fff,#f9fbfd);color:var(--ink);font-weight:600;outline:none;box-shadow:0 2px 5px #123f6308;transition:border .15s,box-shadow .15s}.filter-control:focus{border-color:#4b91bb;box-shadow:0 0 0 3px #2374a81c}.filter-panel small{grid-column:1/-1;color:var(--muted);font-size:11px;line-height:1.5}.group-toolbar{grid-template-columns:minmax(160px,.7fr) minmax(160px,1fr) minmax(220px,1.4fr)}.group-toolbar .filter-title{grid-column:1/-1}.group-toolbar .search{max-width:none}.file-pick{position:relative;gap:9px;background:var(--navy);color:white;border:1px solid var(--navy);box-shadow:0 5px 12px #092f5020}.file-pick:hover{background:#12466f}.file-pick input{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0,0,0,0)}.file-pick:focus-within{outline:3px solid #2374a833;outline-offset:2px}.file-icon{font-size:18px;font-weight:900}.selected-file{font-size:11px;color:var(--muted);align-self:center}.profile-tag{display:inline-flex;padding:5px 9px;border-radius:20px;font-size:9px;font-weight:850;letter-spacing:.4px}.profile-tag.admin{background:#e8eefb;color:#314f9a}.profile-tag.tst{background:#e4f4f1;color:#147365}.idle-pill{display:inline-flex;padding:5px 9px;border-radius:20px;background:#edf3f7;color:#37566d;font-weight:750;font-size:10px;white-space:nowrap}.idle-pill.attention{background:#fff2d9;color:#8c5b12}.group-stats{display:flex;gap:12px;flex-wrap:wrap}.group-stats span{font-size:10px;color:var(--muted)}.group-stats strong{color:var(--navy);font-size:13px}@media(max-width:760px){.filter-panel,.group-toolbar{grid-template-columns:1fr}.filter-title,.filter-panel small{grid-column:1}.group-stats{gap:8px}.selected-file{width:100%}}
+/* v1.1.9 — filtros e importação: grade alinhada e responsiva */
+.filter-panel{display:grid;gap:14px 16px;align-items:end;padding:20px 22px}
+.dashboard-filter{grid-template-columns:repeat(2,minmax(0,1fr))}
+.group-toolbar{grid-template-columns:minmax(170px,.85fr) minmax(170px,.95fr) minmax(240px,1.3fr)}
+.filter-title{grid-column:1/-1;display:flex;align-items:baseline;gap:10px;padding-bottom:2px}
+.filter-title .eyebrow{margin:0}.filter-title strong{font-size:14px;color:var(--navy)}
+.filter-field{display:flex;flex-direction:column;gap:7px;min-width:0}
+.filter-field label{display:block;margin:0;color:#526779;font-size:11px;font-weight:750;line-height:1.3}
+.filter-control{display:block;width:100%;min-width:0;height:44px;margin:0;padding:10px 13px;border:1px solid #d5e0e8;border-radius:10px;background:linear-gradient(180deg,#fff,#f9fbfd);color:var(--ink);font-weight:600;outline:none;box-shadow:0 2px 5px #123f6308;transition:border .15s,box-shadow .15s}
+.filter-control:focus{border-color:#4b91bb;box-shadow:0 0 0 3px #2374a81c}
+.filter-field .search{max-width:none;width:100%;padding:10px 13px}
+.filter-panel small{grid-column:1/-1;margin-top:0;color:var(--muted);font-size:11px;line-height:1.5}
+.import-actions{align-items:center;gap:10px 12px}
+.import-action-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:43px;padding:11px 16px;border:1px solid #ccd8e2;border-radius:9px;background:#fff;color:var(--navy);font-size:14px;font-weight:700;line-height:19px;white-space:nowrap;text-decoration:none;cursor:pointer;transition:background .15s,border-color .15s,transform .12s}
+.import-action-btn:hover{background:#f4f8fb;border-color:#9fb5c7}
+.import-action-btn:active{transform:translateY(1px)}
+.file-pick{position:relative;margin:0}
+.file-pick input{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.file-pick:focus-within{outline:3px solid #2374a833;outline-offset:2px}
+.selected-file{font-size:11px;color:var(--muted);align-self:center;min-width:180px}
+.profile-tag{display:inline-flex;padding:5px 9px;border-radius:20px;font-size:9px;font-weight:850;letter-spacing:.4px}.profile-tag.admin{background:#e8eefb;color:#314f9a}.profile-tag.tst{background:#e4f4f1;color:#147365}
+.idle-pill{display:inline-flex;padding:5px 9px;border-radius:20px;background:#edf3f7;color:#37566d;font-weight:750;font-size:10px;white-space:nowrap}.idle-pill.attention{background:#fff2d9;color:#8c5b12}
+.group-stats{display:flex;gap:12px;flex-wrap:wrap}.group-stats span{font-size:10px;color:var(--muted)}.group-stats strong{color:var(--navy);font-size:13px}
+@media(max-width:900px){.group-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.group-toolbar .filter-field:last-child{grid-column:1/-1}}
+@media(max-width:760px){.filter-panel{padding:17px;gap:12px}.dashboard-filter,.group-toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.filter-title,.filter-panel small{grid-column:1/-1}.group-toolbar .filter-field:last-child{grid-column:1/-1}.group-stats{gap:8px}.selected-file{width:100%;min-width:0}}
+@media(max-width:520px){.dashboard-filter,.group-toolbar{grid-template-columns:1fr}.filter-title,.filter-panel small,.group-toolbar .filter-field:last-child{grid-column:1}.import-actions{align-items:stretch}.import-action-btn{width:100%}.selected-file{padding:2px 1px}}
+
