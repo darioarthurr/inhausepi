@@ -1,9 +1,24 @@
 {
+  "id": "./",
   "name": "Gestão de EPIs - Grupo GPS",
   "short_name": "Gestão EPIs",
   "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#f2f5f8",
   "theme_color": "#003366",
-  "icons": []
+  "icons": [
+    {
+      "src": "assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
 }

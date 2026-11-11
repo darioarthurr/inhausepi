@@ -6,6 +6,8 @@
 <meta name="theme-color" content="#003366">
 <meta name="description" content="Gestão de estoque de EPIs - Grupo GPS">
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icons/icon-192.png">
+<link rel="apple-touch-icon" href="assets/icons/icon-192.png">
 <link rel="stylesheet" href="styles.css">
 <title>Gestão de EPIs | Grupo GPS</title>
 </head>
@@ -25,7 +27,7 @@
 <div id="app" class="hidden">
 <header class="topbar">
   <div><div class="brand-mini">GPS</div><div><strong>Gestão de EPIs</strong><small id="userInfo"></small></div></div>
-  <button id="logout" class="btn outline">Sair</button>
+  <div class="top-actions"><button id="updateApp" class="btn outline">Atualizar versão</button><button id="logout" class="btn outline">Sair</button></div>
 </header>
 <nav class="nav" id="nav">
   <button data-tab="dashboard" class="active">Painel</button>
@@ -33,12 +35,14 @@
   <button data-tab="saida">Saída</button>
   <button data-tab="estoque">Estoque</button>
   <button data-tab="historico">Histórico</button>
-  <button data-tab="admin" id="adminNav" class="hidden">Administração</button>
+  <button data-tab="cadastros" id="cadastrosNav">Cadastros</button>
+  <button data-tab="tsts" class="admin-only">Gestão de TSTs</button>
 </nav>
 <main>
 <section id="tab-dashboard" class="tab-page">
   <div class="section-head"><div><h1>Painel de estoque</h1><p id="lastUpdate">Carregando dados...</p></div><button id="refresh" class="btn outline">Atualizar</button></div>
   <div class="kpis" id="kpis"></div>
+  <div class="panel"><h2>Movimentação dos últimos 30 dias</h2><div class="kpis" id="movementKpis"></div></div>
   <div class="panel"><h2>Conformidade dos Certificados de Aprovação</h2><p id="caBaseInfo" class="muted">Situação e validade do CA informadas manualmente após consulta ao portal oficial do MTE.</p><div id="caAlerts" class="table-wrap"></div></div>
   <div class="panel"><h2>Prioridades de reposição</h2><div id="alerts" class="table-wrap">Carregando...</div></div>
   <div class="panel"><h2>Consumo por item (últimos 90 dias)</h2><div id="consumption" class="table-wrap"></div></div>
@@ -49,7 +53,6 @@
     <label>Produto / tamanho<select id="entryProduct" required></select></label>
     <label>Quantidade<input id="entryQty" type="number" min="1" step="1" required></label>
     <label>Fornecedor<input id="entrySupplier" maxlength="120"></label>
-    <label>NF / documento<input id="entryDoc" maxlength="80"></label>
     <label class="wide">Observação<textarea id="entryObs" rows="2"></textarea></label>
     <button class="btn primary wide" type="submit">Registrar entrada</button>
   </form></div>
@@ -72,7 +75,7 @@
 <section id="tab-historico" class="tab-page hidden">
   <div class="panel"><div class="section-head"><h1>Movimentações</h1><input id="historySearch" class="search" placeholder="Buscar produto, matrícula ou colaborador"></div><div id="historyTable" class="table-wrap"></div></div>
 </section>
-<section id="tab-admin" class="tab-page hidden">
+<section id="tab-cadastros" class="tab-page hidden">
   <div class="panel"><h1>Cadastro de produtos / variantes</h1>
   <form id="productForm" class="form-grid">
     <label>SKU / código<input id="pSku" required maxlength="40"></label>
@@ -85,25 +88,35 @@
     <label>Validade do CA (consulta manual)<input id="pCaExpiry" type="date"></label>
     <label>Situação do CA (consulta manual)<select id="pCaStatus"><option value="NAO CONSULTADO">Não consultado</option><option value="VALIDO">Válido</option><option value="SUSPENSO">Suspenso</option><option value="CANCELADO">Cancelado</option></select></label>
     <label>Estoque mínimo<input id="pMin" type="number" min="0" step="1" value="0"></label>
-    <label>Prazo reposição (dias)<input id="pLead" type="number" min="0" step="1" value="15"></label>
-    <label>Estoque de segurança (dias)<input id="pSafety" type="number" min="0" step="1" value="7"></label>
-    <label>Múltiplo de compra<input id="pPack" type="number" min="1" step="1" value="1"></label>
-    <label>Preço unitário (reservado ADMIN)<input id="pPrice" type="number" min="0" step="0.01"></label>
+    <label>Estoque de segurança (quantidade)<input id="pSafety" type="number" min="0" step="1" value="0"><small>Quantidade adicional mantida como proteção contra atrasos ou aumento de consumo.</small></label>
+    <label>Múltiplo de compra<input id="pPack" type="number" min="1" step="1" value="1"><small>Quantidade em que o fornecedor vende o item. Use 1 se não houver exigência.</small></label>
+    <label id="priceField">Preço unitário<input id="pPrice" type="number" min="0" step="0.01"></label>
     <button class="btn primary wide" type="submit">Cadastrar produto</button>
   </form></div>
   <div class="panel"><h2>Consulta manual do CA</h2><p class="muted">O sistema não baixa nem valida CAs automaticamente. Consulte o número no portal oficial do Ministério do Trabalho e registre manualmente a situação e a data de validade no cadastro do produto.</p><p><a class="btn outline" href="https://caepi.trabalho.gov.br/internet/ConsultaCAInternet.aspx" target="_blank" rel="noopener">Consultar CA no portal oficial do MTE</a></p><p class="muted">A responsabilidade pela conferência e atualização das informações permanece com o responsável pelo cadastro.</p></div>
-  <div class="panel"><h2>Cadastro de colaboradores</h2><p class="muted">A base oficial de colaboradores é mantida na aba COLABORADORES da planilha. Use matrícula única e marque como ATIVO ou INATIVO.</p></div>
+  <div class="panel"><h2>Cadastro de usuários / colaboradores</h2><p class="muted">Cadastre ou atualize o colaborador pela matrícula. Campos: matrícula, nome e CR. O cadastro de acesso ao aplicativo (senha e perfil) continua separado na aba USUARIOS.</p><form id="collaboratorForm" class="form-grid"><label>Matrícula<input id="cMatricula" maxlength="40" required></label><label>Nome completo<input id="cNome" maxlength="120" required></label><label>CR<input id="cCR" maxlength="60"></label><button class="btn primary wide" type="submit">Salvar colaborador</button></form><div id="collaboratorTable" class="table-wrap"></div></div>
   <div class="panel"><h2>Usuários do sistema</h2><p class="muted">Cadastre usuários e permissões na aba USUARIOS. Os perfis aceitos são ADMIN e TST. A senha deve ser gravada como hash SHA-256, conforme instruções do tutorial.</p></div>
-  <div class="panel"><h2>Ajuste de estoque</h2><form id="adjustForm" class="form-grid">
+  <div class="panel admin-only"><h2>Ajuste de estoque</h2><form id="adjustForm" class="form-grid">
     <label>Produto<select id="adjustProduct" required></select></label>
     <label>Quantidade (+/-)<input id="adjustQty" type="number" step="1" required></label>
     <label class="wide">Motivo obrigatório<textarea id="adjustReason" required rows="2"></textarea></label>
     <button class="btn warning wide" type="submit">Registrar ajuste auditado</button>
   </form></div>
-  <div class="panel"><h2>Módulo financeiro</h2><p class="muted">Estrutura reservada ao ADMIN. Valores unitários não são exibidos ao perfil TST.</p></div>
+  <div class="panel admin-only"><h2>Módulo financeiro</h2><p class="muted">Área administrativa.</p></div>
+</section>
+<section id="tab-tsts" class="tab-page hidden admin-only">
+  <div class="panel"><h1>Cadastro e gestão de TSTs</h1><p class="muted">Somente ADMIN pode cadastrar, editar, ativar ou desativar usuários com perfil TST. Para manter a senha atual, deixe o campo de senha em branco ao editar.</p>
+  <form id="tstForm" class="form-grid">
+    <label>Matrícula<input id="tstMatricula" maxlength="40" required></label>
+    <label>Nome completo<input id="tstNome" maxlength="120" required></label>
+    <label>Senha inicial / nova senha<input id="tstSenha" type="password" minlength="6" autocomplete="new-password"><small>Obrigatória no cadastro; opcional na edição. Mínimo de 6 caracteres.</small></label>
+    <label class="check-label"><input id="tstAtivo" type="checkbox" checked> Usuário ativo</label>
+    <div class="wide form-actions"><button class="btn primary" type="submit">Salvar TST</button><button class="btn outline" id="tstClear" type="button">Limpar formulário</button></div>
+  </form></div>
+  <div class="panel"><h2>Usuários TST cadastrados</h2><div id="tstTable" class="table-wrap"></div></div>
 </section>
 </main>
-<footer>Powered by Grupo GPS</footer>
+<footer>Powered by Grupo GPS • Versão 1.1.4</footer>
 </div>
 <script src="config.js"></script><script src="app.js"></script>
 </body></html>

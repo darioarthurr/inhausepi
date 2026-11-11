@@ -1,6 +1,6 @@
 # Gestão de EPIs — Grupo GPS
 
-**Pacote final 1.1.2 — 11/11/2026**
+**Pacote 1.1.4 — 11/11/2026**
 
 Esta edição remove a integração automática com a base CAEPI do MTE. O número do CA, a situação e a data de validade são registrados manualmente após consulta ao portal oficial. O cadastro não depende de download, importação ou validação externa. O cache do PWA foi versionado para forçar a atualização da interface.
 
@@ -39,7 +39,7 @@ Cadastre os produtos com SKU único por variante/tamanho. Exemplo:
 - `LUVA-NITR-M` / Luva nitrílica / M
 - `LUVA-NITR-G` / Luva nitrílica / G
 
-Preencha o número do CA, mínimo, prazo de reposição, dias de segurança e múltiplo de compra. Ao cadastrar, informe o CA, a data de validade e a situação após consulta manual no portal oficial. O sistema não consulta o MTE, não valida o número do CA e não preenche dados automaticamente.
+Preencha o número do CA, estoque mínimo, estoque de segurança em quantidade e múltiplo de compra. Ao cadastrar, informe o CA, a data de validade e a situação após consulta manual no portal oficial. O sistema não consulta o MTE, não valida o número do CA e não preenche dados automaticamente.
 
 ### ESTOQUE
 Preencha:
@@ -72,7 +72,7 @@ A API usa POST `application/x-www-form-urlencoded`. Teste a URL abrindo-a no nav
 ## 6. Publicar o frontend no GitHub Pages
 
 1. Crie um repositório GitHub, por exemplo `gestao-epi-gps`.
-2. Envie os arquivos da raiz deste pacote (`index.html`, `styles.css`, `app.js`, `config.js`, `sw.js`, `manifest.webmanifest`) para a raiz do repositório.
+2. Envie os arquivos da raiz deste pacote (`index.html`, `styles.css`, `app.js`, `config.js`, `sw.js`, `manifest.webmanifest`) para a raiz do repositório e envie também a pasta `assets/icons/` mantendo sua estrutura.
 3. Abra `config.js` e substitua `COLE_A_URL_DO_GOOGLE_APPS_SCRIPT_AQUI` pela URL `/exec` copiada.
 4. Em **Settings > Pages**, selecione `Deploy from a branch`, branch `main`, pasta `/ (root)`.
 5. Aguarde a publicação e abra o endereço do Pages. No celular, use “Adicionar à tela inicial” ou “Instalar app”.
@@ -89,18 +89,18 @@ A API usa POST `application/x-www-form-urlencoded`. Teste a URL abrindo-a no nav
 ## 8. Regras operacionais
 
 - Saída exige matrícula existente e colaborador ativo; o backend consulta `COLABORADORES` e grava matrícula, nome e setor na movimentação.
-- O TST pode registrar entradas/saídas e consultar estoque/histórico. O ADMIN também cadastra produtos e faz ajustes.
+- O TST pode registrar entradas/saídas, consultar estoque/histórico, cadastrar produtos e cadastrar/atualizar colaboradores. O ADMIN também pode realizar ajustes de estoque.
 - O backend valida permissões; ocultar botões na tela não é a única barreira.
 - Não há fila offline de lançamentos. Sem internet, não registre movimentações.
 - Ajustes exigem justificativa e são registrados em `AUDITORIA`.
 - O saldo é calculado: saldo inicial + entradas - saídas + ajustes.
-- A compra sugerida é `máx(0, consumo médio diário × (prazo de reposição + dias de segurança) − saldo atual)`, arredondada ao múltiplo de compra. Consumo médio usa os últimos 90 dias; sem histórico, cobertura fica indisponível e a previsão pode ser insuficiente.
+- A compra sugerida considera `máx(0, estoque mínimo + estoque de segurança em quantidade − saldo atual)`, arredondada para cima ao múltiplo de compra. O indicador de entradas e saídas soma as quantidades movimentadas nos últimos 30 dias. Consumo médio usa os últimos 90 dias; sem histórico, cobertura fica indisponível e a previsão pode ser insuficiente.
 - A validade e situação do CA são exibidas na posição de estoque com base nos dados informados manualmente. O sistema não consulta nem valida o CA no MTE. O CA deve estar válido na comercialização/aquisição; após adquirido, o fornecimento deve observar armazenamento e prazo de validade do EPI indicados pelo fabricante/importador. A validade do CA não é a validade física do EPI. A rotina não bloqueia entrega por situação do CA.
 
 ## 9. Testes obrigatórios antes do uso real
 
 1. Login ADMIN e TST.
-2. TST não consegue cadastrar produto nem ajustar estoque (o backend deve negar).
+2. TST consegue cadastrar produtos e colaboradores, mas não consegue ajustar estoque.
 3. Saída com matrícula válida grava colaborador correto.
 4. Saída com matrícula inexistente/inativa é recusada.
 5. Saída maior que saldo é recusada.
@@ -111,7 +111,7 @@ A API usa POST `application/x-www-form-urlencoded`. Teste a URL abrindo-a no nav
 ## 10. Limitações desta entrega
 
 - Sem importação de colaboradores/estoque por arquivo: carga inicial é manual na planilha, conforme combinado.
-- A administração de usuários e colaboradores é feita diretamente nas abas da planilha nesta versão.
+- O cadastro de colaboradores (matrícula, nome e CR) é feito pelo aplicativo. A criação de credenciais de acesso (matrícula, hash de senha e perfil ADMIN/TST) continua na aba USUARIOS para evitar criar usuários sem senha.
 - Correção de movimentação por estorno/reversão e alertas automáticos por CA vencido são evoluções recomendadas antes de operação ampla.
 - O código precisa ser implantado e validado no ambiente Google/GitHub da organização; não foi publicado em sua conta nem testado com sua planilha.
 
@@ -119,3 +119,16 @@ A API usa POST `application/x-www-form-urlencoded`. Teste a URL abrindo-a no nav
 ## Arquivo backend desta versão
 
 O backend está em `backend/Code.gs`. Há também uma cópia na raiz (`Code.gs`); ambos têm o mesmo conteúdo. Use apenas um deles ao atualizar o Apps Script.
+
+
+### Atualização e instalação
+- O manifesto inclui ícones PNG de 192×192 e 512×512, além de ícone Apple Touch.
+- O botão **Atualizar versão** solicita a verificação do Service Worker; ao detectar uma versão nova, ativa o cache atualizado e recarrega a interface.
+- Ao publicar uma nova versão, atualize a constante `VERSION` em `sw.js` e a constante `APP_VERSION` em `app.js`, envie os arquivos e publique a alteração no GitHub Pages.
+
+
+### Gestão de TSTs — versão 1.1.4
+- O ADMIN possui a aba `Gestão de TSTs` para cadastrar, editar nome, redefinir senha e ativar/desativar usuários TST.
+- O perfil é fixado como `TST` pela aplicação; esta tela não permite alterar contas ADMIN.
+- A senha é armazenada como hash SHA-256; ao editar, deixe a senha em branco para manter a senha atual.
+- Os ícones PWA ficam em `assets/icons/`; o manifesto, os links de ícone e o cache do service worker apontam para esse caminho.
