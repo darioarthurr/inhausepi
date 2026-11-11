@@ -1,0 +1,9 @@
+{
+  "name": "Gestão de EPIs - Grupo GPS",
+  "short_name": "Gestão EPIs",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f2f5f8",
+  "theme_color": "#003366",
+  "icons": []
+}
