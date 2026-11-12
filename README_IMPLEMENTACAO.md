@@ -75,3 +75,11 @@ Cabeçalhos dos modelos:
 3. Não execute `recriarBaseLimpa()` nem `setupSistema()` para esta atualização. A estrutura atual da planilha é mantida; não há mudança de cabeçalhos.
 4. Confirme que o acesso do Web App permite executar como proprietário e que o público-alvo está de acordo com a política da organização, pois o endpoint de autoatendimento precisa aceitar chamadas sem sessão.
 5. Homologue em ambiente controlado: matrícula ativa/inativa/inexistente, produto com saldo/zerado, quantidade maior que o saldo, registro no histórico e atualização do saldo.
+
+
+## Revisão 1.2.1 — filtros de período
+
+- Visão geral: incluído filtro de mês, combinado com ano e produto. Os gráficos de entradas/saídas, consumo e custos são recalculados a partir das movimentações carregadas. Quando o mês é selecionado sem ano, o sistema consolida aquele mês em todos os anos disponíveis.
+- Histórico: filtro Dia convertido de campo numérico para lista suspensa com Todos e dias 1 a 31.
+- Cache da PWA atualizado para forçar a carga dos arquivos revisados.
+- Nenhuma alteração no backend ou na estrutura da planilha.

@@ -53,12 +53,22 @@ function escapeHtml(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;",
 function kpi(label,value,detail,icon){return `<div class="kpi"><div class="kpi-top"><span class="kpi-icon">${icon}</span><span class="kpi-label">${label}</span></div><strong>${money(value)}</strong><small>${detail||""}</small></div>`}
 function barChart(elId,items,currency=false){const el=$(elId);if(!items.length){el.innerHTML='<div class="empty">Sem dados suficientes para o gráfico.</div>';return;}const max=Math.max(1,...items.map(x=>Number(x.value)||0));el.innerHTML=items.map(x=>`<div class="bar-row"><div class="bar-label"><span>${escapeHtml(x.label)}</span><b>${currency?brl(x.value):money(x.value)}</b></div><div class="bar-track"><div class="bar-fill ${x.className||""}" style="width:${Math.max(x.value>0?2:0,(Number(x.value)||0)/max*100)}%"></div></div></div>`).join("")}
 function renderDashboard(){
-  const base=state.dashboard||{},selected=$("dashboardItemFilter")?.value||"",year=$("dashboardYearFilter")?.value||"";
+  const base=state.dashboard||{},selected=$("dashboardItemFilter")?.value||"",year=$("dashboardYearFilter")?.value||"",month=$("dashboardMonthFilter")?.value||"";
   const annual=(base.yearMetrics||[]).find(x=>String(x.year)===String(year));
   const allYears=base.yearMetrics||[];
   const allConsumption={};allYears.forEach(y=>(y.consumption||[]).forEach(x=>{allConsumption[x.label]=(allConsumption[x.label]||0)+Number(x.qty||0)}));
   let d={...base,entries30:allYears.reduce((n,y)=>n+Number(y.entries||0),0),exits30:allYears.reduce((n,y)=>n+Number(y.exits||0),0),consumption:Object.entries(allConsumption).map(([label,qty])=>({label,qty})).sort((a,b)=>b.qty-a.qty),costMonthly:base.costMonthly||[],costByItem:base.costByItem||[]};
   if(year&&annual){d={...base,entries30:annual.entries,exits30:annual.exits,consumption:annual.consumption||[],costMonthly:annual.costMonthly||[],costByItem:annual.costByItem||[]};}
+  if(month){
+    const filteredMoves=state.moves.filter(m=>{const p=localDateParts(m.data);return p.month===month&&(!year||p.year===year)&&(!selected||String(m.idEpi)===String(selected));});
+    const entries=filteredMoves.filter(m=>m.tipo==="ENTRADA").reduce((n,m)=>n+Number(m.quantidade||0),0);
+    const exits=filteredMoves.filter(m=>m.tipo==="SAIDA").reduce((n,m)=>n+Number(m.quantidade||0),0);
+    const byItem={};filteredMoves.filter(m=>m.tipo==="SAIDA").forEach(m=>{byItem[m.label]=(byItem[m.label]||0)+Number(m.quantidade||0)});
+    const entryCost=filteredMoves.filter(m=>m.tipo==="ENTRADA").reduce((n,m)=>n+Number(m.custo||0),0);
+    const exitCost=filteredMoves.filter(m=>m.tipo==="SAIDA").reduce((n,m)=>n+Number(m.custo||0),0);
+    const monthNames=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+    d={...base,entries30:entries,exits30:exits,consumption:Object.entries(byItem).map(([label,qty])=>({label,qty})).sort((a,b)=>b.qty-a.qty),costMonthly:[{month:monthNames[Number(month)-1]+(year?"":" • todos os anos"),entry:entryCost,exit:exitCost}],costByItem:[]};
+  }
   if(selected){
     const item=(base.itemMetrics||[]).find(x=>String(x.sku)===String(selected));
     const product=state.stock.find(x=>String(x.sku)===String(selected));
@@ -67,7 +77,10 @@ function renderDashboard(){
       const caCounts={validos:0,vencidos:0,suspensos:0,cancelados:0,naoConsultados:0,semCA:0};
       const caMap={"VALIDO":"validos","VENCIDO":"vencidos","SUSPENSO":"suspensos","CANCELADO":"cancelados","NAO CONSULTADO":"naoConsultados","SEM CA":"semCA"};
       caCounts[caMap[product.caSituacao]||"naoConsultados"]=1;
-      d={...d,skus:1,units:item.saldo,below:item.saldo<item.minimo?1:0,zero:item.saldo<=0?1:0,entries30:year?(ai?.entries||0):allYears.reduce((n,y)=>n+Number(y.itemMetrics?.find(x=>String(x.sku)===String(selected))?.entries||0),0),exits30:year?(ai?.exits||0):allYears.reduce((n,y)=>n+Number(y.itemMetrics?.find(x=>String(x.sku)===String(selected))?.exits||0),0),caCounts,priorities:[item.priority],consumption:((year?Number(ai?.exits||0):allYears.reduce((n,y)=>n+Number(y.itemMetrics?.find(x=>String(x.sku)===String(selected))?.exits||0),0))>0?[{label:item.label,qty:year?Number(ai?.exits||0):allYears.reduce((n,y)=>n+Number(y.itemMetrics?.find(x=>String(x.sku)===String(selected))?.exits||0),0)}]:[]),costMonthly:year?(ai?.costMonthly||[]):(base.costByItem||[]).filter(x=>String(x.idEpi)===String(selected)),costByItem:[]};
+      const selectedMoves=month?state.moves.filter(m=>localDateParts(m.data).month===month&&(!year||localDateParts(m.data).year===year)&&String(m.idEpi)===String(selected)):[];
+      const selectedEntries=selectedMoves.filter(m=>m.tipo==="ENTRADA").reduce((n,m)=>n+Number(m.quantidade||0),0);
+      const selectedExits=selectedMoves.filter(m=>m.tipo==="SAIDA").reduce((n,m)=>n+Number(m.quantidade||0),0);
+      d={...d,skus:1,units:item.saldo,below:item.saldo<item.minimo?1:0,zero:item.saldo<=0?1:0,entries30:month?selectedEntries:(year?(ai?.entries||0):allYears.reduce((n,y)=>n+Number(y.itemMetrics?.find(x=>String(x.sku)===String(selected))?.entries||0),0)),exits30:month?selectedExits:(year?(ai?.exits||0):allYears.reduce((n,y)=>n+Number(y.itemMetrics?.find(x=>String(x.sku)===String(selected))?.exits||0),0)),caCounts,priorities:[item.priority],consumption:month?(selectedExits>0?[{label:item.label,qty:selectedExits}]:[]):((year?Number(ai?.exits||0):allYears.reduce((n,y)=>n+Number(y.itemMetrics?.find(x=>String(x.sku)===String(selected))?.exits||0),0))>0?[{label:item.label,qty:year?Number(ai?.exits||0):allYears.reduce((n,y)=>n+Number(y.itemMetrics?.find(x=>String(x.sku)===String(selected))?.exits||0),0)}]:[]),costMonthly:month?d.costMonthly:(year?(ai?.costMonthly||[]):(base.costByItem||[]).filter(x=>String(x.idEpi)===String(selected))),costByItem:[]};
     }
   }
   const c=d.caCounts||{};
@@ -77,7 +90,8 @@ function renderDashboard(){
   $("kpis").innerHTML=cards.join("");
   $("noExit30Table").innerHTML=exitIdleItems.length?`<table><thead><tr><th>Produto / EPI</th><th>Grupo</th><th>Saldo atual</th><th>Última saída</th><th>Dias sem saída</th><th>Referência</th></tr></thead><tbody>${exitIdleItems.map(x=>`<tr><td><strong>${escapeHtml(x.descricao||x.label)}</strong><small class="subline">${escapeHtml(x.variante||x.sku)}</small></td><td>${escapeHtml(x.categoria||"Sem grupo")}</td><td>${money(x.saldo)} ${escapeHtml(x.unidade||"UN")}</td><td>${x.lastExit?date(x.lastExit):"—"}</td><td><span class="idle-pill attention">${money(x.daysWithoutExit)} dias</span></td><td>${x.exitReferenceType==="SAIDA"?"Última saída registrada":"Desde o cadastro"}</td></tr>`).join("")}</tbody></table>`:'<div class="empty">Nenhum item ultrapassou 30 dias sem saída.</div>';
 
-  $("movementPeriod").textContent=year?`Ano ${year}`:"Todo o período";$("consumptionPeriod").textContent=year?`Ano ${year}`:"Todo o período";
+  const periodLabel=month?`${["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"][Number(month)-1]}${year?" / "+year:" • todos os anos"}`:(year?`Ano ${year}`:"Todo o período");
+  $("movementPeriod").textContent=periodLabel;$("consumptionPeriod").textContent=periodLabel;
   barChart("movementChart",[{label:"Entradas",value:d.entries30||0,className:"entry-fill"},{label:"Saídas",value:d.exits30||0,className:"exit-fill"}]);
   barChart("stockChart",[{label:"Dentro do mínimo",value:Math.max(0,(d.skus||0)-(d.below||0)),className:"entry-fill"},{label:"Abaixo do mínimo",value:Math.max(0,(d.below||0)-(d.zero||0)),className:"warn-fill"},{label:"Zerados",value:d.zero||0,className:"exit-fill"}]);
   barChart("caChart",[{label:"Válidos",value:c.validos||0,className:"entry-fill"},{label:"Vencidos",value:c.vencidos||0,className:"exit-fill"},{label:"Suspensos / cancelados",value:(c.suspensos||0)+(c.cancelados||0),className:"exit-fill"},{label:"Não consultados",value:c.naoConsultados||0,className:"warn-fill"},{label:"Sem CA",value:c.semCA||0,className:"neutral-fill"}]);
@@ -139,7 +153,7 @@ $("adjustForm").onsubmit=async e=>{e.preventDefault();try{await api("movement",{
 $("stockSearch").oninput=renderStock;
 ["historyYear","historyMonth","historyDay","historyType","historyEmployee","historyProduct","historySearch"].forEach(id=>$(id).addEventListener(id==="historySearch"?"input":"change",renderHistory));
 $("clearHistoryFilters").addEventListener("click",()=>{["historyYear","historyMonth","historyDay","historyType","historyEmployee","historyProduct","historySearch"].forEach(id=>$(id).value="");renderHistory()});
-$("dashboardItemFilter").addEventListener("change",renderDashboard);$("dashboardYearFilter").addEventListener("change",renderDashboard);$("groupYearFilter").addEventListener("change",renderGroupAnalysis);
+$("dashboardItemFilter").addEventListener("change",renderDashboard);$("dashboardYearFilter").addEventListener("change",renderDashboard);$("dashboardMonthFilter").addEventListener("change",renderDashboard);$("groupYearFilter").addEventListener("change",renderGroupAnalysis);
 $("groupFilter").addEventListener("change",renderGroupAnalysis);$("groupSearch").addEventListener("input",renderGroupAnalysis);
 $("userForm").addEventListener("submit",async e=>{e.preventDefault();try{await api("user",{matricula:$("userMatricula").value.trim(),nome:$("userNome").value.trim(),perfil:$("userPerfil").value,senha:$("userSenha").value,ativo:$("userAtivo").checked});e.target.reset();$("userAtivo").checked=true;$("userMatricula").readOnly=false;$("userPerfil").disabled=false;await loadAll();toast("Usuário salvo com sucesso.")}catch(err){toast(err.message)}});
 $("userTable").addEventListener("click",e=>{const b=e.target.closest("[data-edit-user]");if(!b)return;const u=state.users.find(x=>x.matricula===b.dataset.editUser);if(!u)return;$("userMatricula").value=u.matricula;$("userMatricula").readOnly=true;$("userNome").value=u.nome;$("userPerfil").value=u.perfil;$("userSenha").value="";$("userAtivo").checked=u.ativo;$("userNome").focus()});
