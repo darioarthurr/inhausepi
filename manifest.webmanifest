@@ -20,5 +20,6 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "description": "Gestão de estoque, entregas e autoatendimento de EPIs — Grupo GPS (versão 1.2)"
 }

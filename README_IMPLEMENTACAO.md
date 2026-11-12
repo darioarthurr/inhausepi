@@ -1,4 +1,4 @@
-# Gestão de EPIs — Grupo GPS | Versão 1.1.7
+# Gestão de EPIs — Grupo GPS | Versão 1.2
 
 ## Estrutura da planilha (base nova)
 Abas oficiais: PRODUTOS, ESTOQUE, MOVIMENTACOES, USUARIOS, COLABORADORES, AUDITORIA e CONFIGURACOES. Não há mais abas FINANCEIRO ou INDICADORES; custo e histórico ficam registrados na movimentação.
@@ -30,7 +30,7 @@ Cabeçalhos dos modelos:
 - Estoque inicial: `EPI;GRUPO;SUBGRUPO;SALDO_INICIAL;LOCAL`
 
 
-## Versão 1.1.9 — melhorias integradas
+## Versão 1.1.20 — melhorias integradas
 
 - A aba **Gestão de TSTs** foi substituída por **Gestão de usuários**, com cadastro e edição dos perfis `TST` e `ADMIN`.
 - O backend impede que um administrador retire o próprio perfil ADMIN ou desative a própria conta e protege a existência de pelo menos um ADMIN ativo.
@@ -49,3 +49,29 @@ Cabeçalhos dos modelos:
 **Compatibilidade de dados:** não há alteração nos cabeçalhos das abas existentes nem necessidade de recriar a planilha. A Gestão de usuários utiliza a aba `USUARIOS` existente.
 
 **Validação realizada neste pacote:** sintaxe JavaScript do frontend e do backend, JSON do manifesto, igualdade entre `Code.gs` e `backend/Code.gs` e integridade do ZIP. A execução real contra a planilha Google e a implantação do Apps Script dependem do ambiente do usuário e não foram simuladas.
+
+
+### Acabamento final da interface (1.1.20)
+
+- O seletor **Escolher arquivo CSV** utiliza o mesmo padrão visual, altura, tipografia, borda e alinhamento do botão **Baixar modelo CSV**.
+- Os filtros da **Visão geral** foram organizados em duas colunas equilibradas.
+- Os filtros da **Análise por grupos** foram organizados em três colunas no desktop, duas em telas intermediárias e uma em dispositivos móveis.
+- Campos de seleção e pesquisa compartilham altura, espaçamento, foco e largura responsiva.
+- O identificador de cache do Service Worker foi renovado para forçar a atualização dos arquivos de interface desta revisão.
+
+
+## Versão 1.2 — melhorias de operação e gestão
+
+- Identificação visual da versão 1.2 e atualização do cache da PWA.
+- Autoatendimento de retirada na tela de login: consulta da matrícula, confirmação do nome, seleção de EPI com saldo positivo e gravação da saída no estoque/histórico/auditoria. O backend valida novamente matrícula, situação ativa, produto, quantidade e saldo. A movimentação identifica o operador como `Autoatendimento (sem login)`.
+- Atenção de segurança: como a identificação escolhida é somente matrícula, o fluxo confirma o nome cadastrado, mas não comprova que a pessoa que digitou a matrícula é seu titular. Recomenda-se disponibilizar o botão em tablet/terminal supervisionado no almoxarifado.
+- Histórico com filtros combináveis por ano, mês, dia, tipo de movimentação, colaborador, EPI e pesquisa livre. A API disponibiliza até as 3.000 movimentações mais recentes por sessão.
+- Campo de cadastro renomeado para **Tamanho**; os dados antigos continuam armazenados na coluna `SUBGRUPO` para preservar compatibilidade.
+- Indicadores complementares: quantidade de itens com cobertura estimada de até 30 dias e consumo médio mensal com base nas saídas dos últimos 90 dias. Os indicadores anteriores foram mantidos.
+
+### Atualização da versão 1.2
+1. Substitua os arquivos do frontend no GitHub Pages pelo conteúdo desta versão.
+2. Substitua o conteúdo do Apps Script pelo `Code.gs` atualizado e publique uma nova versão da implantação do Web App.
+3. Não execute `recriarBaseLimpa()` nem `setupSistema()` para esta atualização. A estrutura atual da planilha é mantida; não há mudança de cabeçalhos.
+4. Confirme que o acesso do Web App permite executar como proprietário e que o público-alvo está de acordo com a política da organização, pois o endpoint de autoatendimento precisa aceitar chamadas sem sessão.
+5. Homologue em ambiente controlado: matrícula ativa/inativa/inexistente, produto com saldo/zerado, quantidade maior que o saldo, registro no histórico e atualização do saldo.
