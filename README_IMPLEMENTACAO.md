@@ -85,9 +85,17 @@ Cabeçalhos dos modelos:
 - Nenhuma alteração no backend ou na estrutura da planilha.
 
 
-## Revisão 1.2.2 — edição de EPIs e auditoria administrativa
+## Revisão 1.2.3 — edição de EPIs e auditoria administrativa
 - TST e ADMIN podem editar EPIs diretamente na aba Produtos.
 - A edição preserva o ID_EPI e não altera movimentações ou saldos históricos.
 - Alterações de campos são registradas na aba AUDITORIA com usuário, matrícula, data e valores anteriores/novos.
 - O painel de alterações de EPIs é retornado e exibido exclusivamente para ADMIN.
 - O preço unitário continua restrito ao ADMIN.
+
+
+## Versão 1.2.3 — Gestão do ciclo de vida dos EPIs
+- Pesquisa e filtros na aba Produtos; descrição e tamanho em colunas separadas.
+- Edição cadastral por TST e ADM, mantendo o ID_EPI.
+- Inativação e reativação de produtos por ADM, com justificativa e registro em AUDITORIA.
+- Produtos inativos deixam de aparecer nas opções de novas movimentações; histórico e identificação dos movimentos antigos permanecem preservados.
+- Painel administrativo reúne edições, inativações e reativações.

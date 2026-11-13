@@ -53,3 +53,6 @@
 
 /* v1.2.2 — edição de produtos e trilha de auditoria */
 #productAuditPanel{border:1px solid #d9e5ed;background:linear-gradient(180deg,#fff,#f9fbfd)}#productAuditTable table{min-width:760px}#productAuditTable td:last-child{min-width:340px;white-space:normal;line-height:1.5}.product-edit-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* Aba Produtos: pesquisa, filtros e identificação clara de EPI/tamanho */
+.product-filters{display:grid;grid-template-columns:minmax(220px,2fr) minmax(160px,1fr) minmax(160px,1fr);gap:10px;margin:0 0 15px}.product-filters .search{max-width:none}.product-inactive{opacity:.72;background:#fafbfc}.product-edit-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.product-edit-actions .warning{background:#fff0d7;color:#8a4c08}.product-edit-actions .primary{background:#164d73;color:#fff}@media(max-width:650px){.product-filters{grid-template-columns:1fr}.product-edit-actions{min-width:150px}}
