@@ -83,3 +83,11 @@ Cabeçalhos dos modelos:
 - Histórico: filtro Dia convertido de campo numérico para lista suspensa com Todos e dias 1 a 31.
 - Cache da PWA atualizado para forçar a carga dos arquivos revisados.
 - Nenhuma alteração no backend ou na estrutura da planilha.
+
+
+## Revisão 1.2.2 — edição de EPIs e auditoria administrativa
+- TST e ADMIN podem editar EPIs diretamente na aba Produtos.
+- A edição preserva o ID_EPI e não altera movimentações ou saldos históricos.
+- Alterações de campos são registradas na aba AUDITORIA com usuário, matrícula, data e valores anteriores/novos.
+- O painel de alterações de EPIs é retornado e exibido exclusivamente para ADMIN.
+- O preço unitário continua restrito ao ADMIN.

@@ -50,3 +50,6 @@
 .dashboard-filter .filter-title,.dashboard-filter>small{grid-column:1/-1}
 @media(max-width:760px){.dashboard-filter{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:520px){.dashboard-filter{grid-template-columns:1fr}}
+
+/* v1.2.2 — edição de produtos e trilha de auditoria */
+#productAuditPanel{border:1px solid #d9e5ed;background:linear-gradient(180deg,#fff,#f9fbfd)}#productAuditTable table{min-width:760px}#productAuditTable td:last-child{min-width:340px;white-space:normal;line-height:1.5}.product-edit-actions{display:flex;gap:8px;flex-wrap:wrap}
