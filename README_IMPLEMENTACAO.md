@@ -1,101 +1,64 @@
-# Gestão de EPIs — Grupo GPS | Versão 1.2
+# Gestão de EPIs — Grupo GPS | Versão 1.3.0
 
-## Estrutura da planilha (base nova)
-Abas oficiais: PRODUTOS, ESTOQUE, MOVIMENTACOES, USUARIOS, COLABORADORES, AUDITORIA e CONFIGURACOES. Não há mais abas FINANCEIRO ou INDICADORES; custo e histórico ficam registrados na movimentação.
+## Escopo da versão
+- Cadastro de múltiplos estoques com identificador estável, nome, prioridade e situação ativa/inativa.
+- Estoques iniciais criados na primeira migração: `SALA ADM` (prioridade 1) e `BARRACÃO` (prioridade 2).
+- Saldos iniciais e movimentos vinculados a `ID_ESTOQUE`; saldo consolidado e saldo individual por local.
+- Entradas exigem o estoque de destino. Saídas não permitem selecionar origem: o backend consome automaticamente os estoques ativos pela menor prioridade, distribuindo a quantidade quando necessário.
+- Bloqueio de saída quando o saldo agregado dos estoques ativos é insuficiente. Cada parcela da retirada é gravada como movimento individual com o respectivo estoque e quantidade.
+- Autoatendimento utiliza o mesmo mecanismo de baixa automática.
+- Cadastro/edição de estoques e reordenação da prioridade disponíveis ao ADMIN. Estoque com saldo diferente de zero não pode ser inativado. Não há exclusão física de estoques.
+- Importação de saldo inicial por CSV com `EPI;GRUPO;SUBGRUPO;SALDO_INICIAL;LOCAL`. Não cria produtos: procura o cadastro existente, normaliza acentos/caixa/espaços e exige correspondência única. Local deve corresponder ao nome de um estoque ativo. O mesmo EPI pode receber saldo em locais diferentes; duplicidade EPI+estoque é ignorada.
+- Aba Produtos com pesquisa por EPI/CA/tamanho, filtro por grupo e status, e colunas separadas para descrição e tamanho. TST e ADMIN podem editar; inativação/reativação exige justificativa.
+- Painel de auditoria de EPI exclusivo para ADMIN, com contagem de edições/inativações/reativações e filtros por texto, usuário e período. O backend não entrega os registros de auditoria ao perfil TST.
+- Histórico exibe o local associado a cada parcela de movimentação.
+- Versão e cache da PWA atualizados para 1.3.0.
 
-### Cadastro de EPI
-Campos: EPI, GRUPO, SUBGRUPO, UNIDADE, CA, CA_VALIDADE, CA_SITUACAO, MINIMO, ESTOQUE_SEGURANCA_QTD e PRECO_UNITARIO. O ID_EPI é gerado automaticamente e não aparece para o usuário. SKU/código, fabricante e múltiplo de compra foram removidos.
+## Estrutura de planilha
+Abas: `PRODUTOS`, `ESTOQUES`, `ESTOQUE`, `MOVIMENTACOES`, `USUARIOS`, `COLABORADORES`, `AUDITORIA` e `CONFIGURACOES`.
 
-### Custo histórico
-Cada entrada/saída grava PRECO_UNITARIO_REF e CUSTO_TOTAL na linha da movimentação. O painel apresenta custos mensais de entrada e saída; ao filtrar um EPI, o gráfico considera apenas aquele EPI. O custo usa o preço unitário cadastrado no momento da movimentação.
+Colunas novas/expandidas:
+- `ESTOQUES`: `ID_ESTOQUE`, `NOME`, `PRIORIDADE`, `ATIVO`, `CRIADO_EM`.
+- `ESTOQUE`: `ID_ESTOQUE`, `ID_EPI`, `SALDO_INICIAL`, `LOCAL`.
+- `MOVIMENTACOES`: nova coluna `ID_ESTOQUE`.
 
-## Implantação inicial — ATENÇÃO
-Esta versão foi preparada para uma base nova, ainda sem carga inicial. No Apps Script, configure as propriedades ADMIN_MATRICULA e ADMIN_SENHA. Em seguida execute uma única vez `recriarBaseLimpa("RECRIAR BASE EPIs")` e depois `setupSistema()`. A função recriarBaseLimpa é destrutiva: remove abas antigas fora da estrutura nova e limpa as abas do sistema. Use somente na planilha de implementação sem dados que devam ser preservados.
+A rotina `setupSistema()` chama uma migração aditiva: cria as abas/colunas ausentes sem limpar registros, cria os estoques padrão se ainda não houver cadastro e associa linhas antigas de saldo/movimentação ao estoque padrão ou ao local de mesmo nome. **Não execute `recriarBaseLimpa()` em uma planilha com dados**, pois essa função é destrutiva.
 
-Depois publique o Apps Script como Web App e configure a URL /exec em config.js. Suba os arquivos do frontend para o GitHub mantendo a estrutura de assets/icons.
+## Atualização de uma instalação existente
+1. Faça uma cópia de segurança da planilha e do projeto Apps Script.
+2. Atualize os arquivos do frontend no repositório GitHub Pages, preservando `config.js` e os ícones.
+3. No Apps Script, substitua o conteúdo do arquivo principal por `Code.gs` desta versão. O arquivo `backend/Code.gs` é cópia idêntica.
+4. Salve e execute manualmente `setupSistema()` uma vez, autorizado pelo proprietário. Essa rotina adiciona a estrutura e migra os movimentos/saldos legados; não recria nem limpa a base.
+5. Publique uma nova versão da implantação Web App. Mantenha a URL `/exec` em `config.js` se a implantação continuar usando a mesma URL.
+6. Abra a PWA, use **Atualizar** e confira o rodapé `Versão 1.3.0`.
 
-## Carga inicial
-Cadastre/importar primeiro os EPIs em PRODUTOS e os funcionários em COLABORADORES. Para carga inicial de saldo, preencha ESTOQUE com ID_EPI, SALDO_INICIAL e LOCAL. O ID_EPI é criado pelo sistema no cadastro do EPI; para importação em lote, use o ID_EPI retornado/gerado e não invente identificadores.
+## Implantação de uma base nova
+Configure `ADMIN_MATRICULA` e `ADMIN_SENHA` nas propriedades do Apps Script. Execute `setupSistema()` para criar as abas e o usuário ADMIN. Não é necessário executar `recriarBaseLimpa()`.
 
-## Validações
-A sintaxe JavaScript pode ser verificada com `node --check app.js` e `node --check Code.gs` (após copiar para extensão .js). A integração real deve ser homologada após implantação no Apps Script e conexão à planilha.
+## Carga CSV inicial
+1. Cadastre/importar produtos em `PRODUTOS`.
+2. Cadastre funcionários em `COLABORADORES`.
+3. Cadastre/valide os nomes dos estoques na aba **Estoque** (ADMIN).
+4. Importe saldos com cabeçalhos `EPI;GRUPO;SUBGRUPO;SALDO_INICIAL;LOCAL` e `LOCAL` igual ao nome do estoque ativo.
 
+Exemplo de linhas:
+```csv
+EPI;GRUPO;SUBGRUPO;SALDO_INICIAL;LOCAL
+Bota PVC;Bota;PVC 41;8;SALA ADM
+Bota PVC;Bota;PVC 41;12;BARRACÃO
+```
 
-## Importação em lote (v1.1.8)
-Acesse **Importação de dados** com perfil ADMIN. Baixe o modelo CSV correspondente, preencha no Excel e salve como **CSV UTF-8** (separador ponto e vírgula). Importe na ordem: EPIs, funcionários e estoque inicial. O sistema gera `ID_EPI` automaticamente. Duplicidades são ignoradas; erros por linha são apresentados após o processamento. Limite: 1.000 linhas por arquivo. A tela aceita CSV; arquivos XLSX devem ser salvos como CSV UTF-8 antes do envio.
+## Validações técnicas realizadas no pacote
+- Sintaxe JavaScript do frontend (`node --check app.js`).
+- Sintaxe JavaScript do backend (`node --check` sobre o conteúdo de `Code.gs`).
+- Igualdade entre `Code.gs` e `backend/Code.gs`.
+- Integridade estrutural do ZIP.
 
-Cabeçalhos dos modelos:
-- EPIs: `EPI;GRUPO;SUBGRUPO;UNIDADE;CA;CA_VALIDADE;CA_SITUACAO;MINIMO;ESTOQUE_SEGURANCA_QTD;PRECO_UNITARIO`
-- Funcionários: `MATRICULA;NOME;CR;SETOR;CENTRO_CUSTO;ATIVO`
-- Estoque inicial: `EPI;GRUPO;SUBGRUPO;SALDO_INICIAL;LOCAL`
+## Homologação obrigatória no ambiente Google
+A execução real com Google Sheets/Apps Script não pode ser simulada apenas com os arquivos locais. Antes de produção, testar: criar estoque; alterar prioridade; entradas em locais diferentes; saída simples; saída distribuída entre dois estoques; saldo insuficiente; autoatendimento; CSV com acento e subgrupo ambíguo; duplicidade EPI+estoque; filtros da aba Produtos; painel ADMIN; bloqueio de dados de auditoria para TST; migração dos movimentos antigos; atualização da PWA.
 
-
-## Versão 1.1.20 — melhorias integradas
-
-- A aba **Gestão de TSTs** foi substituída por **Gestão de usuários**, com cadastro e edição dos perfis `TST` e `ADMIN`.
-- O backend impede que um administrador retire o próprio perfil ADMIN ou desative a própria conta e protege a existência de pelo menos um ADMIN ativo.
-- A Visão geral recebeu filtros por ano e por produto. Movimentações, consumo e custos são recalculados pelo período escolhido; saldo, estoque mínimo e situação dos CAs continuam representando a posição atual.
-- A Análise por grupos recebeu filtro por ano, totais anuais de entradas e saídas e filtros visuais padronizados.
-- A posição de estoque e a análise por grupos mostram dias desde a última movimentação efetiva (entrada, saída ou ajuste não estornado). Quando não existe movimentação, a referência é a data de cadastro do produto; se essa data também não existir no histórico, o sistema informa que não há data de referência.
-- Os modelos CSV são gerados no navegador com BOM UTF-8, delimitador `;` e download com URL temporária; o seletor de arquivo foi transformado em botão visual e exibe o nome do arquivo escolhido.
-
-### Atualização
-
-1. Publique os arquivos do frontend desta versão no mesmo local do GitHub Pages, substituindo os arquivos antigos.
-2. No projeto Google Apps Script, substitua o conteúdo do arquivo principal pelo `Code.gs` desta versão (o arquivo `backend/Code.gs` é uma cópia idêntica).
-3. Salve e crie uma nova implantação/versionamento do Web App do Apps Script. Se a URL `/exec` permanecer a mesma, não é necessário alterar `config.js`; se criar uma implantação com URL diferente, atualize `API_URL`.
-4. No navegador, use **Atualizar** ou faça recarga completa para eliminar o cache antigo.
-
-**Compatibilidade de dados:** não há alteração nos cabeçalhos das abas existentes nem necessidade de recriar a planilha. A Gestão de usuários utiliza a aba `USUARIOS` existente.
-
-**Validação realizada neste pacote:** sintaxe JavaScript do frontend e do backend, JSON do manifesto, igualdade entre `Code.gs` e `backend/Code.gs` e integridade do ZIP. A execução real contra a planilha Google e a implantação do Apps Script dependem do ambiente do usuário e não foram simuladas.
-
-
-### Acabamento final da interface (1.1.20)
-
-- O seletor **Escolher arquivo CSV** utiliza o mesmo padrão visual, altura, tipografia, borda e alinhamento do botão **Baixar modelo CSV**.
-- Os filtros da **Visão geral** foram organizados em duas colunas equilibradas.
-- Os filtros da **Análise por grupos** foram organizados em três colunas no desktop, duas em telas intermediárias e uma em dispositivos móveis.
-- Campos de seleção e pesquisa compartilham altura, espaçamento, foco e largura responsiva.
-- O identificador de cache do Service Worker foi renovado para forçar a atualização dos arquivos de interface desta revisão.
-
-
-## Versão 1.2 — melhorias de operação e gestão
-
-- Identificação visual da versão 1.2 e atualização do cache da PWA.
-- Autoatendimento de retirada na tela de login: consulta da matrícula, confirmação do nome, seleção de EPI com saldo positivo e gravação da saída no estoque/histórico/auditoria. O backend valida novamente matrícula, situação ativa, produto, quantidade e saldo. A movimentação identifica o operador como `Autoatendimento (sem login)`.
-- Atenção de segurança: como a identificação escolhida é somente matrícula, o fluxo confirma o nome cadastrado, mas não comprova que a pessoa que digitou a matrícula é seu titular. Recomenda-se disponibilizar o botão em tablet/terminal supervisionado no almoxarifado.
-- Histórico com filtros combináveis por ano, mês, dia, tipo de movimentação, colaborador, EPI e pesquisa livre. A API disponibiliza até as 3.000 movimentações mais recentes por sessão.
-- Campo de cadastro renomeado para **Tamanho**; os dados antigos continuam armazenados na coluna `SUBGRUPO` para preservar compatibilidade.
-- Indicadores complementares: quantidade de itens com cobertura estimada de até 30 dias e consumo médio mensal com base nas saídas dos últimos 90 dias. Os indicadores anteriores foram mantidos.
-
-### Atualização da versão 1.2
-1. Substitua os arquivos do frontend no GitHub Pages pelo conteúdo desta versão.
-2. Substitua o conteúdo do Apps Script pelo `Code.gs` atualizado e publique uma nova versão da implantação do Web App.
-3. Não execute `recriarBaseLimpa()` nem `setupSistema()` para esta atualização. A estrutura atual da planilha é mantida; não há mudança de cabeçalhos.
-4. Confirme que o acesso do Web App permite executar como proprietário e que o público-alvo está de acordo com a política da organização, pois o endpoint de autoatendimento precisa aceitar chamadas sem sessão.
-5. Homologue em ambiente controlado: matrícula ativa/inativa/inexistente, produto com saldo/zerado, quantidade maior que o saldo, registro no histórico e atualização do saldo.
-
-
-## Revisão 1.2.1 — filtros de período
-
-- Visão geral: incluído filtro de mês, combinado com ano e produto. Os gráficos de entradas/saídas, consumo e custos são recalculados a partir das movimentações carregadas. Quando o mês é selecionado sem ano, o sistema consolida aquele mês em todos os anos disponíveis.
-- Histórico: filtro Dia convertido de campo numérico para lista suspensa com Todos e dias 1 a 31.
-- Cache da PWA atualizado para forçar a carga dos arquivos revisados.
-- Nenhuma alteração no backend ou na estrutura da planilha.
-
-
-## Revisão 1.2.3 — edição de EPIs e auditoria administrativa
-- TST e ADMIN podem editar EPIs diretamente na aba Produtos.
-- A edição preserva o ID_EPI e não altera movimentações ou saldos históricos.
-- Alterações de campos são registradas na aba AUDITORIA com usuário, matrícula, data e valores anteriores/novos.
-- O painel de alterações de EPIs é retornado e exibido exclusivamente para ADMIN.
-- O preço unitário continua restrito ao ADMIN.
-
-
-## Versão 1.2.3 — Gestão do ciclo de vida dos EPIs
-- Pesquisa e filtros na aba Produtos; descrição e tamanho em colunas separadas.
-- Edição cadastral por TST e ADM, mantendo o ID_EPI.
-- Inativação e reativação de produtos por ADM, com justificativa e registro em AUDITORIA.
-- Produtos inativos deixam de aparecer nas opções de novas movimentações; histórico e identificação dos movimentos antigos permanecem preservados.
-- Painel administrativo reúne edições, inativações e reativações.
+## Limitações conhecidas / observações
+- Não há transferência de saldo entre estoques nesta versão; ajuste administrativo deve ser usado com justificativa e estoque de referência.
+- Não há centros de custo nesta versão; fica fora do escopo 1.3.0.
+- O autoatendimento continua identificando o colaborador por matrícula e confirmação de nome, não sendo autenticação forte de identidade. Recomenda-se terminal supervisionado.
+- Não foram executados testes integrados com a planilha real nem implantação no domínio/conta do usuário; a homologação listada acima é necessária.
