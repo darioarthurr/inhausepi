@@ -2,7 +2,7 @@
 "use strict";
 const $ = id => document.getElementById(id);
 const state = {token:null,user:null,products:[],stock:[],employees:[],moves:[],users:[],productEdits:[],catalogProducts:[],statusEdits:[],dashboard:null,stockLocations:[],stockByLocation:[]};
-const APP_VERSION="1.3.3";
+const APP_VERSION="1.3.4";
 let pendingImport=null;
 let busyCount=0;
 const apiUrl = () => window.APP_CONFIG?.API_URL || "";
