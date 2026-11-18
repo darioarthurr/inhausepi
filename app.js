@@ -2,7 +2,7 @@
 "use strict";
 const $ = id => document.getElementById(id);
 const state = {token:null,user:null,products:[],stock:[],employees:[],moves:[],users:[],productEdits:[],catalogProducts:[],statusEdits:[],dashboard:null,stockLocations:[],stockByLocation:[]};
-const APP_VERSION="1.3.3";
+const APP_VERSION="1.3.4";
 let pendingImport=null;
 let busyCount=0;
 const apiUrl = () => window.APP_CONFIG?.API_URL || "";
@@ -61,7 +61,7 @@ function renderSelects(){
   ["entryProduct","exitProduct","adjustProduct"].forEach(id=>{const s=$(id);if(!s)return;s.innerHTML='<option value="">Selecione...</option>';state.products.filter(p=>p.ativo&&(id!=="exitProduct"||Number(state.stock.find(x=>String(x.sku)===String(p.sku))?.saldo||0)>0)).forEach(p=>{const o=document.createElement("option");o.value=p.sku;o.textContent=productLabel(p);s.appendChild(o)})});
   $("employeeOptions").innerHTML=state.employees.filter(e=>e.ativo).map(e=>`<option value="${escapeHtml(e.matricula)}">${escapeHtml(e.nome)}</option>`).join("");
   ["entryStock","adjustStock"].forEach(id=>{const sel=$(id);if(!sel)return;const old=sel.value;sel.innerHTML='<option value="">Selecione o estoque...</option>'+state.stockLocations.filter(x=>x.ativo).sort((a,b)=>a.prioridade-b.prioridade).map(x=>`<option value="${escapeHtml(x.idEstoque)}">${escapeHtml(x.nome)} • prioridade ${x.prioridade}</option>`).join("");if(state.stockLocations.some(x=>x.idEstoque===old&&x.ativo))sel.value=old;});
-  const years=[...new Set((state.dashboard?.years||[]).map(String))].sort((a,b)=>Number(b)-Number(a));
+  const years=getAvailableYears();
   ["dashboardYearFilter","groupYearFilter"].forEach(id=>{const sel=$(id);if(!sel)return;const current=sel.value;sel.innerHTML='<option value="">Todos os anos</option>'+years.map(y=>`<option value="${y}">${y}</option>`).join("");sel.value=current;});
   const itemFilter=$("dashboardItemFilter"),currentItem=itemFilter.value;
   itemFilter.innerHTML='<option value="">Todos os itens</option>'+state.stock.map(x=>`<option value="${escapeHtml(x.sku)}">${escapeHtml(x.label)}</option>`).join("");
@@ -75,8 +75,8 @@ function kpi(label,value,detail,icon){return `<div class="kpi"><div class="kpi-t
 function barChart(elId,items,currency=false){const el=$(elId);if(!items.length){el.innerHTML='<div class="empty">Sem dados suficientes para o gráfico.</div>';return;}const max=Math.max(1,...items.map(x=>Number(x.value)||0));el.innerHTML=items.map(x=>`<div class="bar-row"><div class="bar-label"><span>${escapeHtml(x.label)}</span><b>${currency?brl(x.value):money(x.value)}</b></div><div class="bar-track"><div class="bar-fill ${x.className||""}" style="width:${Math.max(x.value>0?2:0,(Number(x.value)||0)/max*100)}%"></div></div></div>`).join("")}
 function renderDashboard(){
   const base=state.dashboard||{},selected=$("dashboardItemFilter")?.value||"",year=$("dashboardYearFilter")?.value||"",month=$("dashboardMonthFilter")?.value||"";
-  const annual=(base.yearMetrics||[]).find(x=>String(x.year)===String(year));
-  const allYears=base.yearMetrics||[];
+  const allYears=(base.yearMetrics||[]).length?base.yearMetrics:getAvailableYears().map(y=>buildYearMetrics(y));
+  const annual=year?(allYears.find(x=>String(x.year)===String(year))||buildYearMetrics(year)):null;
   const allConsumption={};allYears.forEach(y=>(y.consumption||[]).forEach(x=>{allConsumption[x.label]=(allConsumption[x.label]||0)+Number(x.qty||0)}));
   let d={...base,entries30:allYears.reduce((n,y)=>n+Number(y.entries||0),0),exits30:allYears.reduce((n,y)=>n+Number(y.exits||0),0),consumption:Object.entries(allConsumption).map(([label,qty])=>({label,qty})).sort((a,b)=>b.qty-a.qty),costMonthly:base.costMonthly||[],costByItem:base.costByItem||[]};
   if(year&&annual){d={...base,entries30:annual.entries,exits30:annual.exits,consumption:annual.consumption||[],costMonthly:annual.costMonthly||[],costByItem:annual.costByItem||[]};}
@@ -124,7 +124,7 @@ function renderDashboard(){
 }
 function renderGroupAnalysis(){
   const selected=$("groupFilter")?.value||"",query=($("groupSearch")?.value||"").toLowerCase(),year=$("groupYearFilter")?.value||"";
-  const annual=(state.dashboard?.yearMetrics||[]).find(x=>String(x.year)===String(year));
+  const annual=year?((state.dashboard?.yearMetrics||[]).find(x=>String(x.year)===String(year))||buildYearMetrics(year)):null;
   const metrics=annual?.groupMetrics||{},annualItems=Object.fromEntries((annual?.itemMetrics||[]).map(x=>[String(x.sku),x]));
   const filtered=state.stock.filter(x=>(!selected||(x.categoria||"Sem grupo")===selected)&&(`${x.label} ${x.sku} ${x.categoria}`).toLowerCase().includes(query));
   const groups={};filtered.forEach(x=>{const g=x.categoria||"Sem grupo";(groups[g]||(groups[g]=[])).push(x)});
@@ -166,9 +166,49 @@ function fillProductForm(x){
 }
 function clearProductForm(){ $("productForm").reset();$("pEditId").value="";$("pMin").value=0;$("pSafety").value=0;$("productSubmit").textContent="Cadastrar produto"; }
 function renderUsers(){const el=$("userTable");if(!el)return;const rows=state.users.map(u=>`<tr><td>${escapeHtml(u.matricula)}</td><td>${escapeHtml(u.nome)}</td><td><span class="profile-tag ${u.perfil==="ADMIN"?"admin":"tst"}">${escapeHtml(u.perfil)}</span></td><td><span class="status ${u.ativo?"ok":"attention"}">${u.ativo?"ATIVO":"INATIVO"}</span></td><td><button class="btn table-btn" type="button" data-edit-user="${escapeHtml(u.matricula)}">Editar</button></td></tr>`).join("");el.innerHTML=rows?`<table><thead><tr><th>Matrícula</th><th>Nome</th><th>Perfil</th><th>Status</th><th>Ação</th></tr></thead><tbody>${rows}</tbody></table>`:"<div class=empty>Nenhum usuário cadastrado.</div>"}
-function localDateParts(v){const d=new Date(v);if(Number.isNaN(d.getTime()))return {year:"",month:"",day:""};return {year:String(d.getFullYear()),month:String(d.getMonth()+1).padStart(2,"0"),day:String(d.getDate()).padStart(2,"0")}}
+function localDateParts(v){
+  if(v==null||v==="")return {year:"",month:"",day:""};
+  let d=null;
+  if(v instanceof Date)d=v;
+  else if(typeof v==="number"&&Number.isFinite(v)){
+    if(v>100000000000)d=new Date(v);
+    else if(v>20000)d=new Date(Date.UTC(1899,11,30)+v*86400000);
+  }else{
+    const raw=String(v).trim();
+    const br=raw.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})(?:\D.*)?$/);
+    if(br)d=new Date(Number(br[3]),Number(br[2])-1,Number(br[1]));
+    else {const iso=raw.match(/^(\d{4})-(\d{2})-(\d{2})/);if(iso)d=new Date(Number(iso[1]),Number(iso[2])-1,Number(iso[3]));else d=new Date(raw);}
+  }
+  if(!d||Number.isNaN(d.getTime()))return {year:"",month:"",day:""};
+  return {year:String(d.getFullYear()),month:String(d.getMonth()+1).padStart(2,"0"),day:String(d.getDate()).padStart(2,"0")};
+}
+function getAvailableYears(){
+  return [...new Set([...(state.dashboard?.years||[]).map(String),...state.moves.map(m=>localDateParts(m.data).year)].filter(y=>/^\d{4}$/.test(y)))].sort((a,b)=>Number(b)-Number(a));
+}
+function buildYearMetrics(year){
+  const names=["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  const moves=state.moves.filter(m=>localDateParts(m.data).year===String(year));
+  const items={},groups={},months={};
+  moves.forEach(m=>{
+    const type=String(m.tipo||"").toUpperCase(),qty=Number(m.quantidade||0),cost=Number(m.custo||0),sku=String(m.idEpi??"");
+    if(!items[sku])items[sku]={sku,label:m.label||sku,entries:0,exits:0,costMonthly:[]};
+    if(type==="ENTRADA")items[sku].entries+=qty;
+    if(type==="SAIDA")items[sku].exits+=qty;
+    const stockItem=state.stock.find(x=>String(x.sku)===sku);
+    const group=stockItem?.categoria||"Sem grupo";
+    if(!groups[group])groups[group]={entries:0,exits:0};
+    if(type==="ENTRADA")groups[group].entries+=qty;
+    if(type==="SAIDA")groups[group].exits+=qty;
+    const month=localDateParts(m.data).month;
+    if(!months[month])months[month]={month:month+" - "+names[Number(month)-1],entry:0,exit:0};
+    if(type==="ENTRADA")months[month].entry+=cost;
+    if(type==="SAIDA")months[month].exit+=cost;
+  });
+  const itemMetrics=Object.values(items);
+  return {year:String(year),entries:moves.filter(m=>String(m.tipo).toUpperCase()==="ENTRADA").reduce((n,m)=>n+Number(m.quantidade||0),0),exits:moves.filter(m=>String(m.tipo).toUpperCase()==="SAIDA").reduce((n,m)=>n+Number(m.quantidade||0),0),consumption:Object.values(items).filter(x=>x.exits>0).map(x=>({label:x.label,qty:x.exits})).sort((a,b)=>b.qty-a.qty),costMonthly:Object.values(months).sort((a,b)=>a.month.localeCompare(b.month,"pt-BR",{numeric:true})),costByItem:[],itemMetrics,groupMetrics:groups};
+}
 function populateHistoryFilters(){
-  const years=[...new Set([...state.moves.map(x=>localDateParts(x.data).year),...(state.dashboard?.years||[]).map(String)].filter(Boolean))].sort((a,b)=>Number(b)-Number(a));
+  const years=getAvailableYears();
   const year=$("historyYear"),yearValue=year.value;year.innerHTML='<option value="">Todos</option>'+years.map(y=>`<option value="${y}">${y}</option>`).join("");year.value=years.includes(yearValue)?yearValue:"";
   const employee=$("historyEmployee"),employeeValue=employee.value;
   const employeeMap=new Map();state.moves.forEach(m=>{const mat=String(m.matricula||"").trim();if(mat&&!employeeMap.has(mat))employeeMap.set(mat,String(m.colaborador||mat));});
