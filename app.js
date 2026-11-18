@@ -2,23 +2,43 @@
 "use strict";
 const $ = id => document.getElementById(id);
 const state = {token:null,user:null,products:[],stock:[],employees:[],moves:[],users:[],productEdits:[],catalogProducts:[],statusEdits:[],dashboard:null,stockLocations:[],stockByLocation:[]};
-const APP_VERSION="1.3.0";
+const APP_VERSION="1.3.1";
 let pendingImport=null;
+let busyCount=0;
 const apiUrl = () => window.APP_CONFIG?.API_URL || "";
 function toast(msg){const el=$("toast");el.textContent=msg;el.classList.add("show");setTimeout(()=>el.classList.remove("show"),3600)}
-function busy(on){$("loading").classList.toggle("hidden",!on)}
+function busy(on){busyCount=Math.max(0,busyCount+(on?1:-1));$("loading").classList.toggle("hidden",busyCount===0)}
 async function api(action,data={},publicAccess=false) {
   if(!apiUrl() || apiUrl().includes("COLE_A_URL")) throw new Error("Configure a URL do Apps Script em config.js.");
   const body = new URLSearchParams({action, payload:JSON.stringify({...data,token:publicAccess?"":(state.token||"")})});
-  const response = await fetch(apiUrl(),{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},body});
-  const result = await response.json();
+  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),35000);
+  let response,result;
+  try {
+    response=await fetch(apiUrl(),{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8"},body,signal:controller.signal});
+    if(!response.ok)throw new Error(`Servidor respondeu com HTTP ${response.status}.`);
+    result=await response.json();
+  } catch(err) {
+    if(err.name==="AbortError")throw new Error("O servidor demorou mais de 35 segundos para responder. Verifique o Apps Script e tente novamente.");
+    if(err instanceof SyntaxError)throw new Error("O Apps Script retornou uma resposta inválida. Verifique a implantação do Web App.");
+    throw err;
+  } finally {clearTimeout(timeout)}
   if(!result.ok) throw new Error(result.error || "Falha na operação.");
   return result.data;
 }
+
+function organizeAdminWorkspace(){
+  const move=(node,target,removeTab=false)=>{if(!node||!target)return;if(removeTab){node.classList.remove("tab-page","hidden","admin-only");}target.appendChild(node);};
+  const stocks=$("stockAdminPanel"),audit=$("productAuditPanel"),users=$("tab-usuarios"),imports=$("tab-importacao"),adjust=$("tab-ajuste");
+  move(stocks,$("adminStocks"));move(audit,$("adminAudit"));
+  if(users){[...users.children].forEach(n=>$("adminUsers").appendChild(n));users.remove();}
+  if(imports){[...imports.children].forEach(n=>$("adminImport").appendChild(n));imports.remove();}
+  if(adjust){[...adjust.children].forEach(n=>$("adminAdjust").appendChild(n));adjust.remove();}
+}
+organizeAdminWorkspace();
 function showApp(){
   $("login").classList.add("hidden");$("app").classList.remove("hidden");
   $("userInfo").textContent=`${state.user.nome} • Matrícula ${state.user.matricula} • ${state.user.perfil}`;
-  const isAdmin=String(state.user.perfil||"").toUpperCase()==="ADMIN";
+  const isAdmin=String(state.user.perfil||"").trim().toUpperCase()==="ADMIN";
   document.querySelectorAll(".admin-only:not(.tab-page)").forEach(el=>el.classList.toggle("hidden",!isAdmin));
   // Nunca reexibir automaticamente uma aba administrativa ao trocar de sessão.
   document.querySelectorAll(".tab-page.admin-only").forEach(el=>{if(!isAdmin)el.classList.add("hidden")});
@@ -38,7 +58,7 @@ async function loadAll(){
 function renderAll(){renderSelects();renderDashboard();renderDashboardStockLocations();renderStock();renderStockByLocation();renderGroupAnalysis();renderHistory();renderCollaborators();$("lastUpdate").textContent="Atualizado em "+new Date().toLocaleString("pt-BR")}
 function productLabel(p){return `${p.categoria||"Sem grupo"} • ${p.descricao}${p.variante?" / "+p.variante:""}`}
 function renderSelects(){
-  ["entryProduct","exitProduct","adjustProduct"].forEach(id=>{const s=$(id);if(!s)return;s.innerHTML='<option value="">Selecione...</option>';state.products.filter(p=>p.ativo&&(id!=="exitProduct"||Number(state.stock.find(x=>String(x.sku)===String(p.sku))?.saldo||0)>=0)).forEach(p=>{const o=document.createElement("option");o.value=p.sku;o.textContent=productLabel(p);s.appendChild(o)});if(id==="exitProduct")state.stock.filter(p=>p.ativo===false&&Number(p.saldo)>0).forEach(p=>{const o=document.createElement("option");o.value=p.sku;o.textContent=productLabel(p)+" • INATIVO (saldo remanescente)";s.appendChild(o)})});
+  ["entryProduct","exitProduct","adjustProduct"].forEach(id=>{const s=$(id);if(!s)return;s.innerHTML='<option value="">Selecione...</option>';state.products.filter(p=>p.ativo&&(id!=="exitProduct"||Number(state.stock.find(x=>String(x.sku)===String(p.sku))?.saldo||0)>0)).forEach(p=>{const o=document.createElement("option");o.value=p.sku;o.textContent=productLabel(p);s.appendChild(o)})});
   $("employeeOptions").innerHTML=state.employees.filter(e=>e.ativo).map(e=>`<option value="${escapeHtml(e.matricula)}">${escapeHtml(e.nome)}</option>`).join("");
   ["entryStock","adjustStock"].forEach(id=>{const sel=$(id);if(!sel)return;const old=sel.value;sel.innerHTML='<option value="">Selecione o estoque...</option>'+state.stockLocations.filter(x=>x.ativo).sort((a,b)=>a.prioridade-b.prioridade).map(x=>`<option value="${escapeHtml(x.idEstoque)}">${escapeHtml(x.nome)} • prioridade ${x.prioridade}</option>`).join("");if(state.stockLocations.some(x=>x.idEstoque===old&&x.ativo))sel.value=old;});
   const years=[...new Set((state.dashboard?.years||[]).map(String))].sort((a,b)=>Number(b)-Number(a));
@@ -121,7 +141,7 @@ function renderCollaborators(){const el=$("collaboratorTable");if(!el)return;con
 function renderProducts(){
   const el=$("productTable");if(!el)return;
   const q=($("productSearch")?.value||"").trim().toLocaleLowerCase("pt-BR"),group=$("productGroupFilter")?.value||"",status=$("productStatusFilter")?.value||"";
-  const all=state.catalogProducts.length?state.catalogProducts:state.stock;
+  const all=state.catalogProducts;
   const groups=[...new Set(all.map(x=>x.grupo||x.categoria||"Sem grupo"))].sort((a,b)=>a.localeCompare(b,"pt-BR"));
   const gf=$("productGroupFilter"),old=gf?.value||"";if(gf){gf.innerHTML='<option value="">Todos os grupos</option>'+groups.map(g=>`<option value="${escapeHtml(g)}">${escapeHtml(g)}</option>`).join("");gf.value=old;}
   const items=all.filter(x=>{const name=(x.descricao||"")+" "+(x.variante||"")+" "+(x.ca||"")+" "+(x.grupo||x.categoria||"");return (!q||name.toLocaleLowerCase("pt-BR").includes(q))&&(!group||(x.grupo||x.categoria||"Sem grupo")===group)&&(!status||(status==="ATIVO"?x.ativo:!x.ativo));}).sort((a,b)=>(a.grupo||a.categoria||"").localeCompare(b.grupo||b.categoria||"","pt-BR")||(a.descricao||"").localeCompare(b.descricao||"","pt-BR")||(a.variante||"").localeCompare(b.variante||"","pt-BR"));
@@ -148,10 +168,14 @@ function clearProductForm(){ $("productForm").reset();$("pEditId").value="";$("p
 function renderUsers(){const el=$("userTable");if(!el)return;const rows=state.users.map(u=>`<tr><td>${escapeHtml(u.matricula)}</td><td>${escapeHtml(u.nome)}</td><td><span class="profile-tag ${u.perfil==="ADMIN"?"admin":"tst"}">${escapeHtml(u.perfil)}</span></td><td><span class="status ${u.ativo?"ok":"attention"}">${u.ativo?"ATIVO":"INATIVO"}</span></td><td><button class="btn table-btn" type="button" data-edit-user="${escapeHtml(u.matricula)}">Editar</button></td></tr>`).join("");el.innerHTML=rows?`<table><thead><tr><th>Matrícula</th><th>Nome</th><th>Perfil</th><th>Status</th><th>Ação</th></tr></thead><tbody>${rows}</tbody></table>`:"<div class=empty>Nenhum usuário cadastrado.</div>"}
 function localDateParts(v){const d=new Date(v);if(Number.isNaN(d.getTime()))return {year:"",month:"",day:""};return {year:String(d.getFullYear()),month:String(d.getMonth()+1).padStart(2,"0"),day:String(d.getDate()).padStart(2,"0")}}
 function populateHistoryFilters(){
-  const years=[...new Set(state.moves.map(x=>localDateParts(x.data).year).filter(Boolean))].sort((a,b)=>Number(b)-Number(a));
-  const year=$("historyYear"),yearValue=year.value;year.innerHTML='<option value="">Todos</option>'+years.map(y=>`<option value="${y}">${y}</option>`).join("");year.value=yearValue;
-  const employee=$("historyEmployee"),employeeValue=employee.value;const emps=state.employees.map(x=>({matricula:String(x.matricula),nome:x.nome||""})).sort((a,b)=>a.nome.localeCompare(b.nome,"pt-BR"));employee.innerHTML='<option value="">Todos</option>'+emps.map(x=>`<option value="${escapeHtml(x.matricula)}">${escapeHtml(x.nome||x.matricula)} • ${escapeHtml(x.matricula)}</option>`).join("");employee.value=employeeValue;
-  const product=$("historyProduct"),productValue=product.value;const products=state.stock.map(x=>({id:String(x.sku),label:x.label})).sort((a,b)=>a.label.localeCompare(b.label,"pt-BR"));product.innerHTML='<option value="">Todos</option>'+products.map(x=>`<option value="${escapeHtml(x.id)}">${escapeHtml(x.label)}</option>`).join("");product.value=productValue;
+  const years=[...new Set([...state.moves.map(x=>localDateParts(x.data).year),...(state.dashboard?.years||[]).map(String)].filter(Boolean))].sort((a,b)=>Number(b)-Number(a));
+  const year=$("historyYear"),yearValue=year.value;year.innerHTML='<option value="">Todos</option>'+years.map(y=>`<option value="${y}">${y}</option>`).join("");year.value=years.includes(yearValue)?yearValue:"";
+  const employee=$("historyEmployee"),employeeValue=employee.value;
+  const employeeMap=new Map();state.moves.forEach(m=>{const mat=String(m.matricula||"").trim();if(mat&&!employeeMap.has(mat))employeeMap.set(mat,String(m.colaborador||mat));});
+  state.employees.forEach(x=>{const mat=String(x.matricula||"").trim();if(mat&&!employeeMap.has(mat))employeeMap.set(mat,String(x.nome||mat));});
+  const emps=[...employeeMap.entries()].sort((a,b)=>a[1].localeCompare(b[1],"pt-BR"));employee.innerHTML='<option value="">Todos</option>'+emps.map(([mat,nome])=>`<option value="${escapeHtml(mat)}">${escapeHtml(nome)} • ${escapeHtml(mat)}</option>`).join("");employee.value=employeeMap.has(employeeValue)?employeeValue:"";
+  const product=$("historyProduct"),productValue=product.value;const productMap=new Map();state.moves.forEach(m=>{const id=String(m.idEpi||"");if(id&&!productMap.has(id))productMap.set(id,String(m.label||id));});
+  const products=[...productMap.entries()].sort((a,b)=>a[1].localeCompare(b[1],"pt-BR"));product.innerHTML='<option value="">Todos</option>'+products.map(([id,label])=>`<option value="${escapeHtml(id)}">${escapeHtml(label)}</option>`).join("");product.value=productMap.has(productValue)?productValue:"";
 }
 function renderHistory(){
   if(!$('historyTable'))return;
@@ -162,7 +186,7 @@ function renderHistory(){
   $("historyTable").innerHTML=rows?`<table><thead><tr><th>Data</th><th>Movimento</th><th>Produto</th><th>Estoque</th><th>Qtd.</th><th>Matrícula</th><th>Funcionário</th><th>Registrado por</th></tr></thead><tbody>${rows}</tbody></table>`:'<div class="empty">Nenhuma movimentação encontrada para os filtros selecionados.</div>';
 }
 
-function switchTab(tab){const target=$("tab-"+tab);if(!target||(target.classList.contains("admin-only")&&state.user.perfil!=="ADMIN"))return;document.querySelectorAll(".tab-page").forEach(x=>x.classList.add("hidden"));target.classList.remove("hidden");document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));window.scrollTo({top:0,behavior:"smooth"})}
+function switchTab(tab){const target=$("tab-"+tab);if(!target||(target.classList.contains("admin-only")&&String(state.user?.perfil||"").toUpperCase()!=="ADMIN"))return;document.querySelectorAll(".tab-page").forEach(x=>x.classList.add("hidden"));target.classList.remove("hidden");document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));window.scrollTo({top:0,behavior:"smooth"})}
 $("nav").addEventListener("click",e=>{const b=e.target.closest("button[data-tab]");if(b)switchTab(b.dataset.tab)});
 $("loginForm").addEventListener("submit",async e=>{e.preventDefault();busy(true);try{const d=await api("login",{matricula:$("loginMatricula").value.trim(),senha:$("loginSenha").value});state.token=d.token;state.user=d.user;showApp();await loadAll()}catch(err){toast(err.message)}finally{busy(false)}});
 $("logout").onclick=async()=>{try{await api("logout")}catch(e){}state.token=null;state.user=null;showLogin()};
