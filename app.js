@@ -2,7 +2,7 @@
 "use strict";
 const $ = id => document.getElementById(id);
 const state = {token:null,user:null,products:[],stock:[],employees:[],moves:[],users:[],productEdits:[],catalogProducts:[],statusEdits:[],dashboard:null,stockLocations:[],stockByLocation:[]};
-const APP_VERSION="1.3.1";
+const APP_VERSION="1.3.2";
 let pendingImport=null;
 let busyCount=0;
 const apiUrl = () => window.APP_CONFIG?.API_URL || "";
@@ -188,7 +188,7 @@ function renderHistory(){
 
 function switchTab(tab){const target=$("tab-"+tab);if(!target||(target.classList.contains("admin-only")&&String(state.user?.perfil||"").toUpperCase()!=="ADMIN"))return;document.querySelectorAll(".tab-page").forEach(x=>x.classList.add("hidden"));target.classList.remove("hidden");document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));window.scrollTo({top:0,behavior:"smooth"})}
 $("nav").addEventListener("click",e=>{const b=e.target.closest("button[data-tab]");if(b)switchTab(b.dataset.tab)});
-$("loginForm").addEventListener("submit",async e=>{e.preventDefault();busy(true);try{const d=await api("login",{matricula:$("loginMatricula").value.trim(),senha:$("loginSenha").value});state.token=d.token;state.user=d.user;showApp();await loadAll()}catch(err){toast(err.message)}finally{busy(false)}});
+$("loginForm").addEventListener("submit",async e=>{e.preventDefault();busy(true);try{const d=await api("login",{matricula:$("loginMatricula").value.trim(),senha:$("loginSenha").value});state.token=d.token;state.user=d.user;await loadAll();showApp()}catch(err){state.token=null;state.user=null;showLogin();toast("Não foi possível carregar os dados após o login: "+err.message)}finally{busy(false)}});
 $("logout").onclick=async()=>{try{await api("logout")}catch(e){}state.token=null;state.user=null;showLogin()};
 $("refresh").onclick=()=>loadAll().catch(e=>toast(e.message));
 $("entryForm").onsubmit=async e=>{e.preventDefault();try{await api("movement",{tipo:"ENTRADA",sku:$("entryProduct").value,idEstoque:$("entryStock").value,quantidade:Number($("entryQty").value),observacao:$("entryObs").value});e.target.reset();await loadAll();toast("Entrada registrada com sucesso.")}catch(err){toast(err.message)}};

@@ -1,4 +1,4 @@
-# Gestão de EPIs — Grupo GPS | Versão 1.3.1
+# Gestão de EPIs — Grupo GPS | Versão 1.3.2
 
 ## Escopo da versão
 - Cadastro de múltiplos estoques com identificador estável, nome, prioridade e situação ativa/inativa.
@@ -12,7 +12,7 @@
 - Aba Produtos com pesquisa por EPI/CA/tamanho, filtro por grupo e status, e colunas separadas para descrição e tamanho. TST e ADMIN podem editar; inativação/reativação exige justificativa.
 - Painel de auditoria de EPI exclusivo para ADMIN, com contagem de edições/inativações/reativações e filtros por texto, usuário e período. O backend não entrega os registros de auditoria ao perfil TST.
 - Histórico exibe o local associado a cada parcela de movimentação.
-- Versão e cache da PWA atualizados para 1.3.1.
+- Versão e cache da PWA atualizados para 1.3.2.
 - Aba **Gestão ADM** centraliza gestão de usuários, importação, gestão/prioridade de estoques, auditoria de EPIs e ajustes administrativos.
 - Entrega oculta EPIs inativos e itens sem saldo positivo.
 - Filtros do histórico são construídos a partir das movimentações registradas.
@@ -34,7 +34,7 @@ A rotina `setupSistema()` chama uma migração aditiva: cria as abas/colunas aus
 3. No Apps Script, substitua o conteúdo do arquivo principal por `Code.gs` desta versão. O arquivo `backend/Code.gs` é cópia idêntica.
 4. Salve e execute manualmente `setupSistema()` uma vez, autorizado pelo proprietário. Essa rotina adiciona a estrutura e migra os movimentos/saldos legados; não recria nem limpa a base.
 5. Publique uma nova versão da implantação Web App. Mantenha a URL `/exec` em `config.js` se a implantação continuar usando a mesma URL.
-6. Abra a PWA, use **Atualizar** e confira o rodapé `Versão 1.3.1`.
+6. Abra a PWA, use **Atualizar** e confira o rodapé `Versão 1.3.2`.
 
 ## Implantação de uma base nova
 Configure `ADMIN_MATRICULA` e `ADMIN_SENHA` nas propriedades do Apps Script. Execute `setupSistema()` para criar as abas e o usuário ADMIN. Não é necessário executar `recriarBaseLimpa()`.
@@ -63,12 +63,12 @@ A execução real com Google Sheets/Apps Script não pode ser simulada apenas co
 
 ## Limitações conhecidas / observações
 - Não há transferência de saldo entre estoques nesta versão; ajuste administrativo deve ser usado com justificativa e estoque de referência.
-- Não há centros de custo nesta versão; fica fora do escopo 1.3.1.
+- Não há centros de custo nesta versão; fica fora do escopo 1.3.2.
 - O autoatendimento continua identificando o colaborador por matrícula e confirmação de nome, não sendo autenticação forte de identidade. Recomenda-se terminal supervisionado.
 - Não foram executados testes integrados com a planilha real nem implantação no domínio/conta do usuário; a homologação listada acima é necessária.
 
 
-## Atualização 1.3.1
+## Atualização 1.3.2
 - Centralização das rotinas exclusivas do ADMIN na aba Gestão ADM.
 - Correção do filtro de entrega para ocultar produtos sem saldo positivo.
 - Filtros do histórico passam a considerar colaboradores e EPIs presentes nas movimentações, mesmo que não estejam mais ativos no cadastro.
